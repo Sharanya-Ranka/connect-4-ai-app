@@ -1,0 +1,42 @@
+.game-board-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.game-board-column {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.game-board {
+  display: flex;
+  flex-direction: row;
+}
+
+.tile {
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(transparent 48%, blue 50%);
+}
+
+.tile-yellow {
+  background: radial-gradient(yellow 48%, blue 50%);
+}
+
+.tile-red {
+  background: radial-gradient(red 48%, blue 50%);
+}
+
+.tile-yellow-winning_run {
+  background: radial-gradient(black 20%, transparent 22%),
+    radial-gradient(yellow 48%, blue 50%);
+}
+
+.tile-red-winning_run {
+  background: radial-gradient(black 20%, transparent 22%),
+    radial-gradient(red 48%, blue 50%);
+}
+
+.tile-highlighted {
+  opacity: 50%;
+}

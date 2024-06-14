@@ -1,0 +1,107 @@
+Some challenges to serve as ladder rungs in order to build a Connect-4 AI Web App
+
+1) Medium: Connect 4 board with ability to tap and play coins
+2) Hard: A Tree-visualiser to visualise the game-tree, nodes and asociated expected win-rates
+3) Design: Blog site. Explainability components
+
+1) Connect 4 board with interactivity, playability
+    a) Board length, width customisable
+    b) State to keep track of who's playing (Human, MCTS Agent, Other agents etc..)
+    c) Start with 2 player types - Human and RandomValidMove, try designing a player interface
+
+
+2) Game-tree visualiser real-time updates of expected win-rates
+    a) Shows pictorial game-state on hovering
+    b) Ability to drill-down into some moves, retrace back up and check other nodes
+    c) Data-driven - THe AI agent will not perform computations while users interact with the visualiser
+
+
+3) Blog site with interactive components for explanation
+    a) What is a game-tree? (Tree-like or use from above)
+    b) Monte carlo asymmetric search example (Full tree-view at once)
+    c) Vs Random monte-carlo search 
+    d) 
+
+
+4) Decide which data-structure to use as a 'game-state'
+    a) Memory constraints
+    b) Time to perform move-explorations by agent
+    c) Ease and performance for 'checkConnect4' and 'nextState' operations
+
+5) Integrate code that maintains game-state with code that renders and tracks interactivity with the GameBoard
+    a) Game Board communicates which column was clicked
+    b) Game-State logic may decide whom to pass on the click information to (pass it on to HumanPlayers, but not SoftwareAgents)
+    c) Can players directly subscribe to GameBoard clicks? 
+    d) What should be in react and what should be vanilla javascript? Where should the players(vanilla js) be initialised and maintained, how should they interact with react components
+    e) You may want to update what is held in a player object, but not consider it as a 'state' - is this a valid reason not to implement Players in react components?
+    f) Challenge - console.log() based 
+
+
+6) Build the Monte Carlo Tree Search agent.
+    a) Should provide auxiliary information (future move evaluations)
+    b) Can you poll for information after regular intervals of time? (Move time 0%, 50% 100%, update move evaluations)
+    c) b) Would require suspending CPU compute and accessing the state of the player
+
+7) Design a form to input 
+    a) The number of rows and columns in the board. Can you update the display dynamically?
+        a1) Try to simply build a form first. Make it controlled (from parent component). Check the form tutorial to learn how to proceed
+        a2) Will need to create a parent component that tracks all useful state. Figure out a way to simplify GameCreator (its too bulky)
+    b) The kind of players, and additional information for each player (strength for MCTS agent)
+    c) Connect this to the "Game Creator"
+
+8) Improve design of tree visualizer
+    a) Having an explicit tree seems redundant, since the states can provide their own parent and children states
+    b) Mini-visualise the state in the game-board?
+
+Designing the MCTS agent
+Agent has a set/map of "known_states" which would conatain state info (moves to represent state + UCT scores)
+Each state is unique, but can have a mutable UCT score estimate within it
+
+Selection
+1) Start from current state (S)
+2) Choose children states with the best UCT scores (Until you reach a leaf state / gameover state)
+3) Reach Leaf-state (L)
+
+Expansion
+1) If the leaf state is not a game-over state, add its children to the "known-states"
+
+Simulation
+1) From the leaf state perform random moves until you reach a gameOver State
+
+Backpropagation
+1) 
+
+
+Designing GameState and concepts to learn
+1) How do you represent state?
+Each MCTS agent will have its own game-tree. It is important to come up with a 'game-state' representation that is 
+    a) Low Memory (Memory constraints) (MCTS 500 will explore at max 42*500 unique game states each move (21* 500 is a better upper bound)) * 42 moves ~ 900k states
+    b) Easy to decide (Win/Loss/Draw/NotOver) (Time constraints)
+    c) Quick update to next-game-states
+
+It seems that requirement b) is the most complex task, so it may dominate the decision making
+
+1a) Game State = {moves = [0, ]}
+i) Moves alternate between 1st and 2nd player (implicit in the array)
+ii) Each element in the array represents the column in which the player entered the token
+iii) Each game state will occupy a maximum of 7*6 = 42 numbers. Average = 21 * 4bytes each = 84 bytes (100 bytes per state * 900k states = 90MB)
+iv) How do you discover 4-chains?
+Assume we have:
+Reds: [(x1, y1), (x2, y2), (x3, y3), ...]
+Yellows: [(x1, y1), (x2, y2), (x3, y3), ...]
+vertical 4-chain: xi = xj = xk = xl & yi+3 = yj+2 = yk+1 = yl 
+Sort (key = (x, y)) and then 1-pass
+
+bottom-left to top-right: Sort (key = (x-y, x)) and then 1-pass check
+top-left to bottom-right: Sort (key = (x+y, x)) and then 1-pass check
+
+
+
+
+1a) Game State = {board = [[0, 1, 2, 0, 0, 0, 0], [...], [...], ...]}
+i) Represents the game-board at each state (close to React UI state representation)
+ii) Each game-state will occupy fixed 42 numbers. 168 bytes.
+iii) 
+
+
+
