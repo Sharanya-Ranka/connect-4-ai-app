@@ -8,6 +8,11 @@
 # testing
 /coverage
 
+# rough-work
+/public/line1.svg
+shade-narrow-watch-2024-03-31_193132.tgz
+/glitch-connect4-app/
+
 # production
 /build
 

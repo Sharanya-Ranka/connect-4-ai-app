@@ -1,4 +1,47 @@
 .game-config-form {
   display: flex;
   flex-direction: column;
+  text-align: left;
+  padding: 10px;
+  border: 2px solid black;
+  margin: 10px;
+  /* background-color: rgba(75, 75, 255, 0.8); */
+}
+
+.game-config-rows {
+  padding: 10px;
+}
+
+.game-config-columns {
+  padding: 10px;
+}
+
+.game-config-player1 {
+  padding: 10px;
+}
+
+.game-config-player2 {
+  padding: 10px;
+}
+
+.game-config-monitor {
+  padding: 10px;
+}
+.strength-label {
+  margin-left: 10px;
+}
+hr {
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  width: 100%;
+}
+select {
+  margin-left: 10px;
+  padding: 4px;
+}
+
+button {
+  width: 100%;
+  font-size: large;
+  padding: 10px;
+  margin-top: 20px;
 }

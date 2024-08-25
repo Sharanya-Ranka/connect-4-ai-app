@@ -3,13 +3,16 @@ Some challenges to serve as ladder rungs in order to build a Connect-4 AI Web Ap
 1) Medium: Connect 4 board with ability to tap and play coins
 2) Hard: A Tree-visualiser to visualise the game-tree, nodes and asociated expected win-rates
 3) Design: Blog site. Explainability components
+4) Hovering over a column should show where the next coin would go
+5) Connect the tree vizualisations to the GameBoard
 
+DONE
 1) Connect 4 board with interactivity, playability
     a) Board length, width customisable
     b) State to keep track of who's playing (Human, MCTS Agent, Other agents etc..)
     c) Start with 2 player types - Human and RandomValidMove, try designing a player interface
 
-
+DONE
 2) Game-tree visualiser real-time updates of expected win-rates
     a) Shows pictorial game-state on hovering
     b) Ability to drill-down into some moves, retrace back up and check other nodes
@@ -20,14 +23,23 @@ Some challenges to serve as ladder rungs in order to build a Connect-4 AI Web Ap
     a) What is a game-tree? (Tree-like or use from above)
     b) Monte carlo asymmetric search example (Full tree-view at once)
     c) Vs Random monte-carlo search 
-    d) 
+    d) Want to catch their attention by giving a lay-man explanation first
+    e) Read the UCT paper yourself first
 
+3.5) Add React Routing for new page with Blog component
 
+3.6) Convenience/UI improvements
+    a) Explain Connect-4 on the playing page (modal?)
+    b) How will you arrange all items on the screen? Give special thought to 10x10
+    c) CSS Improvements (Form, GameBoard)
+
+DONE
 4) Decide which data-structure to use as a 'game-state'
     a) Memory constraints
     b) Time to perform move-explorations by agent
     c) Ease and performance for 'checkConnect4' and 'nextState' operations
 
+DONE
 5) Integrate code that maintains game-state with code that renders and tracks interactivity with the GameBoard
     a) Game Board communicates which column was clicked
     b) Game-State logic may decide whom to pass on the click information to (pass it on to HumanPlayers, but not SoftwareAgents)
@@ -36,12 +48,13 @@ Some challenges to serve as ladder rungs in order to build a Connect-4 AI Web Ap
     e) You may want to update what is held in a player object, but not consider it as a 'state' - is this a valid reason not to implement Players in react components?
     f) Challenge - console.log() based 
 
-
+DONE
 6) Build the Monte Carlo Tree Search agent.
     a) Should provide auxiliary information (future move evaluations)
     b) Can you poll for information after regular intervals of time? (Move time 0%, 50% 100%, update move evaluations)
     c) b) Would require suspending CPU compute and accessing the state of the player
 
+DONE
 7) Design a form to input 
     a) The number of rows and columns in the board. Can you update the display dynamically?
         a1) Try to simply build a form first. Make it controlled (from parent component). Check the form tutorial to learn how to proceed
@@ -51,8 +64,48 @@ Some challenges to serve as ladder rungs in order to build a Connect-4 AI Web Ap
 
 8) Improve design of tree visualizer
     a) Having an explicit tree seems redundant, since the states can provide their own parent and children states
-    b) Mini-visualise the state in the game-board?
+        a1) The problem here is that some convenience functions are only defined within the MCTS Player worker.
 
+    b) Mini-visualise the state in the game-board?
+        b1) Can visualize it on the main game-board itself, since all states are children of the state displayed on the game-board
+
+    c) Better design is to visualize the "clicked node in the tree" on the game board itself
+    d) Requires redesign of the GameBoard component (state is not only the game-state, but also other information such as column hovered over and selected state in the vizualiser)
+
+DONE
+9) Redesigning the game board component
+    a) Separate the Game Board component from the "Game Creator" (which actually controls program flow and requests the players for their moves)
+    b) GameCreator should only update the state. It should not render anything, but simply control the program flow
+    c) The Main Component should render the GameBoard with required (more complex) state.
+
+
+10) UI placement
+    a) Priority 1 : Laptop/desktop monitors
+        a1) How to place both the gameboard and the Tree visualizer on the same page without requiring the user to scroll?
+    
+11) Why am I finding it difficult to progress?
+    a) Too many props, state and action props
+    b) Many props are class instances (game_state, players, master)
+
+12) Remaining challenges to v2
+    a) Simplify the useEffect function inside player control
+    b) Players use useRef instead of useState?
+    c) new game state -> Try to have simpler state, so that you may be able to use Redux in the future
+    d) Memory usage (delete unused game states)
+    e) Speed
+
+13) Pre-push checks/testing
+    a) Check if agents are reasonably strong (100, 500, 1000, 5000)
+    b) Agents can play against each other (100 vs 5000, 1000 vs 1000)
+    c) Humans can play against Humans
+    d) Humans can play against Agents (first and secodn position)
+    e) Board fills up without error
+    f) 10 by 10 board, 4 by 4 board, 6 by 7 board no errors
+    g) Pause button works correctly
+    h) Reset button works as expected
+    i) Monitor strength can change as expected
+
+DONE
 Designing the MCTS agent
 Agent has a set/map of "known_states" which would conatain state info (moves to represent state + UCT scores)
 Each state is unique, but can have a mutable UCT score estimate within it
@@ -102,6 +155,7 @@ top-left to bottom-right: Sort (key = (x+y, x)) and then 1-pass check
 i) Represents the game-board at each state (close to React UI state representation)
 ii) Each game-state will occupy fixed 42 numbers. 168 bytes.
 iii) 
+
 
 
 

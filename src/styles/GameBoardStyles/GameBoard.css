@@ -8,35 +8,32 @@
   flex-direction: column-reverse;
 }
 
+.game-board-column:last-child {
+  border-top-right-radius: 100px;
+}
+
 .game-board {
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin: 10px;
+  border: 2px solid black;
+  padding: 10px;
 }
 
 .tile {
-  width: 100px;
-  height: 100px;
-  background: radial-gradient(transparent 48%, blue 50%);
+  width: 70px;
+  height: 70px;
 }
 
-.tile-yellow {
-  background: radial-gradient(yellow 48%, blue 50%);
+.tile span {
+  position: relative;
+  top: 30%;
+  font-weight: bold;
+  /* right: 50%; */
 }
 
-.tile-red {
-  background: radial-gradient(red 48%, blue 50%);
-}
-
-.tile-yellow-winning_run {
-  background: radial-gradient(black 20%, transparent 22%),
-    radial-gradient(yellow 48%, blue 50%);
-}
-
-.tile-red-winning_run {
-  background: radial-gradient(black 20%, transparent 22%),
-    radial-gradient(red 48%, blue 50%);
-}
-
-.tile-highlighted {
+.highlight-partial {
   opacity: 50%;
 }

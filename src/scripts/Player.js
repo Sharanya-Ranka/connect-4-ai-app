@@ -16,29 +16,28 @@ class HumanPlayer {
     this.column_clicked = null;
   }
 
-  _getMoveUpdate() {
-    return { move: this.column_clicked };
+  _getMoveUpdate(resolveCallback) {
+    // console.log("_getMoveUpdate: column clicked", this.column_clicked);
+    if (this.column_clicked === null) {
+      setTimeout(() => {
+        this._getMoveUpdate(resolveCallback);
+      }, 500);
+    } else {
+      // console.log("Resolving");
+      resolveCallback({ move: this.column_clicked });
+    }
   }
 
-  async getMoveUpdate(current_state, resolveCallback) {
-    const update = this._getMoveUpdate();
-    if (resolveCallback) {
-      if (update.move === null) {
-        setTimeout(() => {
-          this.getMoveUpdate(current_state, resolveCallback);
-        }, 500);
-      } else {
-        return resolveCallback(update);
-      }
-    } else {
-      return new Promise((resolve) => {
-        this.getMoveUpdate(current_state, resolve);
-      });
-    }
-    // this.communicateMoveCallback(this.player_number, this.column_clicked);
+  async getMoveUpdate(current_state) {
+    // console.log("getMoveUpdate: Started");
+    this.column_clicked = null;
+    return new Promise((resolve) => {
+      this._getMoveUpdate(resolve);
+    });
   }
 
   communicateColumnClicked(column) {
+    // console.log("communicateColumnClicked:", column);
     this.column_clicked = column;
   }
 }
@@ -51,8 +50,11 @@ class RandomValidMovePlayer {
 
 class MCTSWithUCTPlayer {
   constructor(player_info) {
-    this.player_number = player_info.player_number;
-    this.worker = new MCTSWithUCTPlayerWorker(player_info.num_playouts);
+    this.player_number = player_info.player_num;
+    this.worker = new MCTSWithUCTPlayerWorker(
+      player_info.num_playouts,
+      player_info.player_num,
+    );
   }
   communicatesMoveThroughClick() {
     return false;
@@ -66,4 +68,29 @@ class MCTSWithUCTPlayer {
   }
 }
 
-export { HumanPlayer, RandomValidMovePlayer, MCTSWithUCTPlayer };
+class MCTSWithUCTMonitorPlayer {
+  constructor(player_info) {
+    this.player_number = player_info.player_num;
+    this.worker = new MCTSWithUCTPlayerWorker(
+      player_info.num_playouts,
+      player_info.player_number,
+    );
+  }
+  communicatesMoveThroughClick() {
+    return false;
+  }
+
+  setActive() {}
+
+  async getMoveUpdate(current_state) {
+    const update = await this.worker.getCurrentStateWinChance(current_state);
+    return update;
+  }
+}
+
+export {
+  HumanPlayer,
+  RandomValidMovePlayer,
+  MCTSWithUCTPlayer,
+  MCTSWithUCTMonitorPlayer,
+};

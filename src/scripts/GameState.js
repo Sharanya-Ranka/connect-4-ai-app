@@ -10,7 +10,7 @@ class GameState {
   }
 
   getLastMove() {
-    return this.all_moves[this.all_moves.length - 1][1];
+    return this.all_moves[this.all_moves.length - 1];
   }
 
   getId() {
@@ -23,7 +23,7 @@ class GameState {
     if (
       column === null ||
       column >= this.max_columns ||
-      this.isGameOver() != null
+      this.isGameOver() !== null
     ) {
       return null;
     }
@@ -120,7 +120,7 @@ class GameState {
         ),
       };
     } else if (this.all_moves.length === this.max_columns * this.max_rows) {
-      return { winner: null, runs: null };
+      return { winner: null, runs: [] };
     } else {
       return null;
     }

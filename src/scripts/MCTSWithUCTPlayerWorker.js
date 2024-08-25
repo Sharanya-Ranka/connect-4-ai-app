@@ -245,6 +245,10 @@ function randomChoice(arr) {
   return arr[Math.floor(arr.length * Math.random())];
 }
 
+function roundNDecimals(num, n) {
+  return Math.round(num * Math.pow(10, n)) / Math.pow(10, n);
+}
+
 class GameStateMCTSWithUCT extends GameState {
   constructor(max_rows, max_columns, all_moves = null) {
     super(max_rows, max_columns, all_moves);
@@ -277,33 +281,55 @@ class GameStateMCTSWithUCT extends GameState {
 }
 
 class MCTSWithUCTPlayerWorker {
-  constructor(num_playouts) {
+  constructor(num_playouts, player_num) {
     this.states_known = new Map();
     this.current_state = null;
     this.uct_c_coeff = 2;
     this.num_playouts = num_playouts;
     this.num_playouts_per_chunk = 100;
     this.num_playouts_performed = 0;
+    this.player_num = player_num;
   }
 
-  async getMoveAsync(current_state) {
-    console.log("getMoveAsync : Current state", current_state);
+  async getCurrentStateWinChance(current_state) {
+    // console.log("getCurrentStateWinChance : Current state", current_state);
     this.updateCurrentState(current_state);
     this.num_playouts_performed = 0;
     await this.performPlayouts();
-    const target_state = this.chooseBestChild(this.current_state, 0);
-    // console.log("Target state", target_state);
-    this.updateCurrentState(target_state);
-    const estimated_evaluations_tree_data = this.getEstimatedEvaluationsTree();
-    console.log("NUmber of states known", this.states_known.size);
+    const win_chance = this.getUCTScoreForState(this.current_state, 0);
+    // console.log("Win chance for move chosen=", win_chance * 100);
+
     return {
-      move: target_state.getLastMove(),
-      estimated_evaluations_tree_data: estimated_evaluations_tree_data,
+      win_chance: win_chance,
+    };
+  }
+
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async getMoveAsync(current_state) {
+    // await this.sleep(2 * 1000);
+    this.forgetUnrequiredStates();
+    this.updateCurrentState(current_state);
+    // console.log("getMoveAsync : Current state", current_state);
+    // const win_chance = this.getUCTScoreForState(this.current_state, 0);
+    // console.log("Win chance for move chosen=", win_chance * 100);
+    this.num_playouts_performed = 0;
+    await this.performPlayouts();
+    const target_state = this.chooseBestChild(this.current_state, 0);
+    // this.getChildStatistics(this.current_state);
+
+    // console.log("Number of states known", this.states_known.size);
+    return {
+      move: target_state.getLastMove()[1],
+      // estimated_evaluations_tree_data: estimated_evaluations_tree_data,
+      win_chance: this.getUCTScoreForState(target_state, 0),
     };
   }
 
   async performPlayouts(resolveCallback) {
-    // console.log("Scheduling new playout chunk");
+    // console.log("Scheduling new playout chunk for", this.num_playouts);
     const final_playouts_when_chunk_ends = Math.min(
       this.num_playouts,
       this.num_playouts_performed + this.num_playouts_per_chunk,
@@ -311,8 +337,8 @@ class MCTSWithUCTPlayerWorker {
     while (this.num_playouts_performed < final_playouts_when_chunk_ends) {
       this.allMCTSSteps();
       this.num_playouts_performed += 1;
+      // console.log("Number of playouts performed", this.num_playouts_performed);
     }
-    // console.log("Number of playouts performed", this.num_playouts_performed);
 
     if (this.num_playouts_performed < this.num_playouts) {
       if (resolveCallback) {
@@ -332,6 +358,10 @@ class MCTSWithUCTPlayerWorker {
     }
   }
 
+  forgetUnrequiredStates() {
+    this.states_known.clear();
+  }
+
   getMove(current_state) {
     this.updateCurrentState(current_state);
     for (let sim = 0; sim < this.num_playouts; sim++) {
@@ -339,18 +369,37 @@ class MCTSWithUCTPlayerWorker {
       // console.log("Number of known states", this.states_known.size);
     }
     const target_state = this.chooseBestChild(this.current_state, 0);
-    this.updateCurrentState(target_state);
-    const estimated_evaluations_tree_data = this.getEstimatedEvaluationsTree();
+    // this.updateCurrentState(target_state);
+    // const estimated_evaluations_tree_data = this.getEstimatedEvaluationsTree();
 
     return {
-      move: target_state.getLastMove(),
-      estimated_evaluations_tree_data: estimated_evaluations_tree_data,
+      move: target_state.getLastMove()[1],
+      // estimated_evaluations_tree_data: estimated_evaluations_tree_data,
     };
   }
 
+  getChildStatistics(state) {
+    // Retrieve the children of the current state from this.states_known.
+    // We will choose the best child (as currently estimated using UCT scores)
+    const children = this.getChildKnownStates(state);
+
+    const all_child_plays = children.map((child_state) => child_state.plays);
+    const all_child_wins = children.map((child_state) => child_state.wins);
+
+    // Get the best UCT scores out of all the children
+    const all_child_scores = children.map((child_state) =>
+      this.getUCTScoreForState(child_state, 0),
+    );
+    // console.log(this.player_num);
+    // console.log(all_child_wins);
+    // console.log(all_child_plays);
+    // console.log(all_child_scores.map((num) => roundNDecimals(num, 2)));
+    // console.log();
+  }
+
   getEstimatedEvaluationsTree() {
-    console.log("In estimated evaluations tree");
-    console.log("Current state", this.current_state);
+    // console.log("In estimated evaluations tree");
+    // console.log("Current state", this.current_state);
     // console.log()
     const depth = 4;
     let key = 0;
@@ -392,6 +441,7 @@ class MCTSWithUCTPlayerWorker {
 
   updateCurrentState(state) {
     if (!this.states_known.has(state.getId())) {
+      // console.log("updateCurrentState : State not known, creating new state");
       const new_game_state = new GameStateMCTSWithUCT(
         state.max_rows,
         state.max_columns,
@@ -473,11 +523,13 @@ class MCTSWithUCTPlayerWorker {
     const children = this.getChildKnownStates(state);
 
     // Get the best UCT scores out of all the children
-    const best_child_score = Math.max(
-      ...children.map((child_state) =>
-        this.getUCTScoreForState(child_state, uct_c_coeff),
-      ),
+    const all_child_scores = children.map((child_state) =>
+      this.getUCTScoreForState(child_state, uct_c_coeff),
     );
+    // if (uct_c_coeff === 0) {
+    //   console.log(all_child_scores);
+    // }
+    const best_child_score = Math.max(...all_child_scores);
 
     // Get all best children of the current state
     const best_children = children.filter(
@@ -522,7 +574,7 @@ class MCTSWithUCTPlayerWorker {
 
   backpropagationStep(last_known_state, game_decision) {
     let backprop_state = last_known_state;
-    while (backprop_state !== this.current_state) {
+    while (true) {
       const player = backprop_state.lastMovePlayedBy();
       if (game_decision.winner === player) {
         backprop_state.wins += 1;
@@ -531,12 +583,14 @@ class MCTSWithUCTPlayerWorker {
       }
       backprop_state.plays += 1;
 
+      if (backprop_state === this.current_state) {
+        break;
+      }
+
       backprop_state = this.states_known.get(
         backprop_state.getParentState().getId(),
       );
     }
-
-    this.current_state.plays += 1;
   }
 }
 
