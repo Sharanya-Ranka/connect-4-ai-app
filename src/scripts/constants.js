@@ -12,10 +12,10 @@ const HUMAN_PLAYER = "HUMAN_PLAYER";
 const MAX_ROWS = 10;
 const MAX_COLUMNS = 10;
 const DEFAULT_GAME_CONFIG = {
-  num_rows: 4,
-  num_cols: 4,
-  // player1: { type: HUMAN_PLAYER },
-  player1: { type: MCTS_UCT_PLAYER, strength: 1000 },
+  num_rows: 6,
+  num_cols: 7,
+  player1: { type: HUMAN_PLAYER },
+  // player1: { type: MCTS_UCT_PLAYER, strength: 1000 },
   player2: { type: MCTS_UCT_PLAYER, strength: 1000 },
   monitor: { type: MCTS_UCT_MONITOR_PLAYER, strength: 2000 },
 };
