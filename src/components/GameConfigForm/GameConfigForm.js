@@ -8,6 +8,7 @@ import {
   MAX_ROWS,
   MAX_COLUMNS,
   DEFAULT_GAME_STATE,
+  DEFAULT_PLAYER_CONFIGS,
 } from "../../scripts/constants";
 import React from "react";
 import {
@@ -51,6 +52,37 @@ export default function GameConfigForm({
       player_num === 0 ? "monitor" : player_num === 1 ? "player1" : "player2";
 
     const new_player_config = { ...player_config, [name]: value };
+    // console.log("New player config", new_player_config);
+    setGameConfig((prev_state) => ({
+      ...prev_state,
+      [player_name]: new_player_config,
+    }));
+  }
+
+  function handlePlayerChangeType(player_num, event) {
+    const { name, value } = event.target;
+    const default_config = DEFAULT_PLAYER_CONFIGS[value];
+
+    const player_name =
+      player_num === 0 ? "monitor" : player_num === 1 ? "player1" : "player2";
+
+    // console.log("New player config", default_config);
+    setGameConfig((prev_state) => ({
+      ...prev_state,
+      [player_name]: default_config,
+    }));
+  }
+
+  function handlePlayerChangeStrength(player_num, event) {
+    const { name, value } = event.target;
+    const strength = parseInt(value);
+    const player_name =
+      player_num === 0 ? "monitor" : player_num === 1 ? "player1" : "player2";
+
+    const player_config = game_config[player_name];
+    const new_player_config = { ...player_config, [name]: strength };
+    // console.log("New player config", new_player_config);
+
     setGameConfig((prev_state) => ({
       ...prev_state,
       [player_name]: new_player_config,
@@ -109,7 +141,7 @@ export default function GameConfigForm({
       player1: getPlayer(game_config.player1, 1),
       player2: getPlayer(game_config.player2, 2),
     };
-    console.log("Setting players", players);
+    // console.log("Setting players", players);
     // console.log("Setting active player index", 0);
     setPlayers(players);
     setGameState((prev_state) => ({ ...prev_state, active_player_ind: 1 }));
@@ -194,7 +226,7 @@ export default function GameConfigForm({
         <select
           id="player1"
           name="type"
-          onChange={(event) => handlePlayerChange(1, event)}
+          onChange={(event) => handlePlayerChangeType(1, event)}
           value={game_config.player1.type}
           disabled={game_state.is_game_active}
         >
@@ -208,7 +240,7 @@ export default function GameConfigForm({
             <select
               id="player1_strength"
               name="strength"
-              onChange={(event) => handlePlayerChange(1, event)}
+              onChange={(event) => handlePlayerChangeStrength(1, event)}
               value={game_config.player1.strength}
               disabled={game_state.is_game_active}
             >
@@ -226,7 +258,7 @@ export default function GameConfigForm({
         <select
           id="player2"
           name="type"
-          onChange={(event) => handlePlayerChange(2, event)}
+          onChange={(event) => handlePlayerChangeType(2, event)}
           value={game_config.player2.type}
           disabled={game_state.is_game_active}
         >
@@ -240,7 +272,7 @@ export default function GameConfigForm({
             <select
               id="player2_strength"
               name="strength"
-              onChange={(event) => handlePlayerChange(2, event)}
+              onChange={(event) => handlePlayerChangeStrength(2, event)}
               value={game_config.player2.strength}
               disabled={game_state.is_game_active}
             >
@@ -271,7 +303,7 @@ export default function GameConfigForm({
           <select
             id="monitor_strength"
             name="strength"
-            onChange={(event) => handlePlayerChange(0, event)}
+            onChange={(event) => handlePlayerChangeStrength(0, event)}
             value={game_config.monitor.strength}
             disabled={game_state.is_game_active}
           >

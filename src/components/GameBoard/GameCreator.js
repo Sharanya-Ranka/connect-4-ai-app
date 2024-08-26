@@ -46,16 +46,16 @@ export default function GameCreator({
 
     async function requestPlayerForMoveUpdate() {
       players[active_player_ind].setActive();
-      console.log(`Getting move from player ${active_player_ind}`);
-      console.log("Current game state", game_state);
+      // console.log(`Getting move from player ${active_player_ind}`);
+      // console.log("Current game state", game_state);
       const update = await players[active_player_ind].getMoveUpdate(game_state);
       const move = update.move;
       if (isValidMove(active_player_ind, move)) {
-        console.log(`Committing move from player ${active_player_ind}`);
+        // console.log(`Committing move from player ${active_player_ind}`);
         commitMove(active_player_ind, move);
 
         if (update.estimated_evaluations_tree_data != null) {
-          console.log(update.estimated_evaluations_tree_data);
+          // console.log(update.estimated_evaluations_tree_data);
           // changeTree(
           //   new Tree(
           //     update.estimated_evaluations_tree_data.node_data,

@@ -50,6 +50,7 @@ class RandomValidMovePlayer {
 
 class MCTSWithUCTPlayer {
   constructor(player_info) {
+    // console.log("Creating MCTS player", player_info);
     this.player_number = player_info.player_num;
     this.worker = new MCTSWithUCTPlayerWorker(
       player_info.num_playouts,

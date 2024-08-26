@@ -58,7 +58,7 @@ export default function GameBoard({ game_state, setGameState }) {
       tile_opacity = "partial";
       parity = hover_parity;
     }
-    console.log("Game State", game_state);
+    // console.log("Game State", game_state);
     game_state.all_moves.forEach(([row, col], move_ind) => {
       if (row === row_ind && col === col_ind) {
         parity = move_ind % 2 === 0 ? 1 : 2;

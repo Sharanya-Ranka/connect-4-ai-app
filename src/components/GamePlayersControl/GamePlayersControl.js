@@ -102,7 +102,7 @@ export default function GamePlayersControl({
     playerMoveWorkflow();
 
     return () => {
-      console.log("Cleanup useEffect");
+      // console.log("Cleanup useEffect");
       effect_is_active = false;
     };
   }, [

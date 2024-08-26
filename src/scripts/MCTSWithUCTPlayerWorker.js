@@ -317,7 +317,9 @@ class MCTSWithUCTPlayerWorker {
     // console.log("Win chance for move chosen=", win_chance * 100);
     this.num_playouts_performed = 0;
     await this.performPlayouts();
+    // console.log("Current state", this.current_state);
     const target_state = this.chooseBestChild(this.current_state, 0);
+    // console.log("Target state:", target_state);
     // this.getChildStatistics(this.current_state);
 
     // console.log("Number of states known", this.states_known.size);
@@ -329,7 +331,7 @@ class MCTSWithUCTPlayerWorker {
   }
 
   async performPlayouts(resolveCallback) {
-    // console.log("Scheduling new playout chunk for", this.num_playouts);
+    console.log("Scheduling new playout chunk for", this.num_playouts);
     const final_playouts_when_chunk_ends = Math.min(
       this.num_playouts,
       this.num_playouts_performed + this.num_playouts_per_chunk,
@@ -521,24 +523,29 @@ class MCTSWithUCTPlayerWorker {
     // Retrieve the children of the current state from this.states_known.
     // We will choose the best child (as currently estimated using UCT scores)
     const children = this.getChildKnownStates(state);
+    // console.log("Children", children);
 
     // Get the best UCT scores out of all the children
     const all_child_scores = children.map((child_state) =>
       this.getUCTScoreForState(child_state, uct_c_coeff),
     );
+    // console.log("All child scores", all_child_scores);
     // if (uct_c_coeff === 0) {
     //   console.log(all_child_scores);
     // }
     const best_child_score = Math.max(...all_child_scores);
+    // console.log("Best child score", best_child_score);
 
     // Get all best children of the current state
     const best_children = children.filter(
       (child_state) =>
         this.getUCTScoreForState(child_state, uct_c_coeff) === best_child_score,
     );
+    // console.log("Best children", best_children);
 
     // Choose one of the best children. We will go down this route to explore more
     const best_child = randomChoice(best_children);
+    // console.log("Best child", best_child);
 
     return best_child;
   }
