@@ -9,6 +9,8 @@ import {
   MAX_COLUMNS,
   DEFAULT_GAME_STATE,
   DEFAULT_PLAYER_CONFIGS,
+  MIN_ROWS,
+  MIN_COLUMNS,
 } from "../../scripts/constants";
 import React from "react";
 import {
@@ -161,13 +163,13 @@ export default function GameConfigForm({
 
   const row_options = Array.from(
     Array.from({ length: MAX_ROWS + 1 }).map((_, ind) =>
-      ind >= 4 ? <option value={ind}>{ind}</option> : "",
+      ind >= MIN_ROWS ? <option value={ind}>{ind}</option> : "",
     ),
   );
 
   const column_options = Array.from(
     Array.from({ length: MAX_COLUMNS + 1 }).map((_, ind) =>
-      ind >= 4 ? <option value={ind}>{ind}</option> : "",
+      ind >= MIN_COLUMNS ? <option value={ind}>{ind}</option> : "",
     ),
   );
 

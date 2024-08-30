@@ -10,7 +10,9 @@ const HUMAN_PLAYER = "HUMAN_PLAYER";
 // };
 
 const MAX_ROWS = 10;
+const MIN_ROWS = 2;
 const MAX_COLUMNS = 10;
+const MIN_COLUMNS = 2;
 
 const DEFAULT_PLAYER_CONFIGS = {
   [HUMAN_PLAYER]: { type: HUMAN_PLAYER },
@@ -53,4 +55,6 @@ export {
   MCTS_AGENT_STRENGTHS,
   MAX_ROWS,
   MAX_COLUMNS,
+  MIN_ROWS,
+  MIN_COLUMNS,
 };
