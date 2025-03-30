@@ -1,0 +1,112 @@
+// src/components/Blog.js
+import React from "react";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionItemHeading,
+  AccordionItemButton,
+  AccordionItemPanel,
+} from "react-accessible-accordion";
+import "react-accessible-accordion/dist/fancy-example.css";
+
+import { BlockMath, InlineMath } from "react-katex";
+import "katex/dist/katex.min.css"; // Import KaTeX styles
+
+import blogContent from "../../data/blogContent.json";
+import BlogSection from "./BlogSection";
+
+function Blog() {
+  const [contentData, setContentData] = React.useState([]);
+
+  console.log(blogContent);
+
+  React.useEffect(() => {
+    setContentData(blogContent);
+  }, []);
+
+  const renderContent = (contentArray) => {
+    console.log("Content array=", contentArray);
+    return contentArray.map((item) => {
+      if (item.type === "paragraph") {
+        return <p>{item.value}</p>;
+      } else if (item.type === "latex") {
+        return <BlockMath math={item.value} />;
+      } else {
+        return null; // Handle unknown types
+      }
+    });
+  };
+
+  return (
+    <div className="blog">
+      {/* <h1>Understanding Monte Carlo Tree Search</h1> */}
+      <h1>Coming Soon!</h1>
+
+      {/* <Accordion allowZeroExpanded allowMultipleExpanded={true}>
+        <AccordionItem>
+          <BlogSection
+            title={blogContent.BlogGist.title}
+            content={renderContent(blogContent.BlogGist.data)}
+          />
+        </AccordionItem>
+        <AccordionItem>
+          <BlogSection
+            title={blogContent.ProblemFormulation.title}
+            content={renderContent(blogContent.ProblemFormulation.data)}
+          />
+        </AccordionItem>
+        <AccordionItem>
+          <BlogSection
+            title={blogContent.MCTSDepth.title}
+            content={renderContent(blogContent.MCTSDepth.data)}
+          />
+        </AccordionItem>
+      </Accordion> */}
+    </div>
+  );
+}
+
+export default Blog;
+
+{
+  /* <Accordion preExpanded={['a', 'c']}>
+  <AccordionItem uuid="a" /> // Will be expanded by default
+  <AccordionItem uuid="b" />
+  <AccordionItem uuid="c" /> // Will be expanded by default
+  <AccordionItem uuid="d" />
+</Accordion> */
+}
+
+{
+  /* <Accordion allowZeroExpanded>
+    {items.map((item) => (
+        <AccordionItem key={item.uuid}>
+            <AccordionItemHeading>
+                <AccordionItemButton>
+                    {item.heading}
+                </AccordionItemButton>
+            </AccordionItemHeading>
+            <AccordionItemPanel>
+              {item.content}
+            </AccordionItemPanel>
+        </AccordionItem>
+    ))}
+</Accordion> */
+}
+
+{
+  /* <Accordion allowMultipleExpanded={false}>
+    {items.map((item) => (
+        <AccordionItem key={item.uuid}>
+            <AccordionItemHeading>
+                <AccordionItemButton>
+                    {item.heading}
+                </AccordionItemButton>
+            </AccordionItemHeading>
+            <AccordionItemPanel>
+              {item.content}
+            </AccordionItemPanel>
+        </AccordionItem>
+    ))}
+</Accordion> */
+}

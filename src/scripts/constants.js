@@ -1,6 +1,8 @@
 const MCTS_UCT_PLAYER = "MCTS_UCT_PLAYER";
+const MCTS_UCT_PLAYER_TEXTDISPLAY = "AI";
 const MCTS_UCT_MONITOR_PLAYER = "MCTS_UCT_MONITOR_PLAYER";
 const HUMAN_PLAYER = "HUMAN_PLAYER";
+const HUMAN_PLAYER_TEXTDISPLAY = "Human";
 // const DEFAULT_GAME_CONFIG = {
 //   num_rows: 6,
 //   num_cols: 7,
@@ -22,9 +24,10 @@ const DEFAULT_PLAYER_CONFIGS = {
 const DEFAULT_GAME_CONFIG = {
   num_rows: 6,
   num_cols: 7,
-  player1: { type: HUMAN_PLAYER },
-  // player1: { type: MCTS_UCT_PLAYER, strength: 1000 },
-  player2: { type: MCTS_UCT_PLAYER, strength: 1000 },
+  // player1: { type: HUMAN_PLAYER },
+  player1: { type: MCTS_UCT_PLAYER, strength: 1000 },
+  player2: { type: HUMAN_PLAYER },
+  // player2: { type: MCTS_UCT_PLAYER, strength: 1000 },
   monitor: { type: MCTS_UCT_MONITOR_PLAYER, strength: 2000 },
 };
 
@@ -47,7 +50,9 @@ const MCTS_AGENT_STRENGTHS = [50, 100, 500, 1000, 2000, 5000];
 
 export {
   MCTS_UCT_PLAYER,
+  MCTS_UCT_PLAYER_TEXTDISPLAY,
   HUMAN_PLAYER,
+  HUMAN_PLAYER_TEXTDISPLAY,
   MCTS_UCT_MONITOR_PLAYER,
   DEFAULT_PLAYER_CONFIGS,
   DEFAULT_GAME_CONFIG,

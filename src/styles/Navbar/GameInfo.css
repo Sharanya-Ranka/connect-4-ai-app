@@ -1,0 +1,26 @@
+/* .gameinfo {
+  margin: 10px;
+  border: 2px solid black;
+   padding: 10px; 
+  padding-left: 10px;
+} */
+
+.gameinfo-header {
+  background-color: var(--primary);
+  color: white;
+  padding: 20px;
+  border-radius: var(--border-radius);
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+
+.gameinfo-header h1 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.gameinfo-header p {
+  font-size: 16px;
+  margin-bottom: 10px;
+  opacity: 0.9;
+}

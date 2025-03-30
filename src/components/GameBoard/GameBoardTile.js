@@ -11,7 +11,8 @@ export default function GameBoardTile({
   const highlight_type = "highlight-" + tile_opacity;
   const winning_run = in_winning_run ? "winning_run" : "";
 
-  const blue_container = "radial-gradient(transparent 48%, blue 50%)",
+  const blue_container =
+      "radial-gradient(transparent 48%, var(--primary-dark) 50%)",
     yellow_tile = "radial-gradient(yellow 48%, transparent 50%)",
     red_tile = "radial-gradient(red 48%, transparent 50%)",
     translucent =

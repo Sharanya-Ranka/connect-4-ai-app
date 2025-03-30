@@ -2,4 +2,14 @@
   text-align: center;
   display: flex;
   flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-evenly;
+}
+
+.game-area {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  /* flex-grow: 1; Allow the item to grow and take up remaining space */
+  align-items: center;
 }

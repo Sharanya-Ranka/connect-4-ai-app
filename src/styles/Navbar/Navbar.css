@@ -1,0 +1,39 @@
+/* src/components/Navbar.css */
+.navbar {
+  background-color: var(--primary-dark);
+  padding: 10px 0;
+  position: relative; /* Needed for absolute positioning of details */
+  z-index: 1000; /* High z-index to ensure it's on top */
+}
+
+.nav-list {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-item {
+  margin: 0 20px;
+  position: relative; /* Needed for absolute positioning of details */
+}
+
+.nav-item a {
+  text-decoration: none;
+  color: white;
+  font-weight: bold;
+}
+
+.details-overlay {
+  position: absolute;
+  top: 100%; /* Position below the nav item */
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: transparent;
+  /* border: 1px solid #ccc; */
+  padding: 10px;
+  min-width: 700px;
+  z-index: 1001; /* Higher z-index to overlap content */
+  /* box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); */
+}

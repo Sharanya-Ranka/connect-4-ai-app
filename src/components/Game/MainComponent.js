@@ -1,20 +1,20 @@
-import GameCreator from "./GameBoard/GameCreator";
-import GameConfigForm from "./GameConfigForm/GameConfigForm";
-import { MCTSWithUCTPlayer } from "../scripts/Player";
-import { GameState } from "../scripts/GameState";
+import GameCreator from "../GameBoard/GameCreator";
+import GameConfigForm from "../GameConfigForm/GameConfigForm";
+import { MCTSWithUCTPlayer } from "../../scripts/Player";
+import { GameState } from "../../scripts/GameState";
 
 import {
   MCTS_UCT_PLAYER,
   HUMAN_PLAYER,
   DEFAULT_GAME_CONFIG,
   DEFAULT_GAME_STATE,
-} from "../scripts/constants";
+} from "../../scripts/constants";
 
 import React from "react";
-import GameBoard from "./GameBoard/GameBoard";
-import GamePlayersControl from "./GamePlayersControl/GamePlayersControl";
-import WinChance from "./GameBoard/WinChance";
-import "../styles/MainComponent.css";
+import GameBoard from "../GameBoard/GameBoard";
+import GamePlayersControl from "../GamePlayersControl/GamePlayersControl";
+import WinChance from "../GameBoard/WinChance";
+import "../../styles/MainComponent.css";
 
 // import useSe
 export default function MainComponent() {
@@ -61,14 +61,16 @@ export default function MainComponent() {
         setPlayers={setPlayers}
         setGameState={setNewGameState}
       />
+      <div className="game-area">
+        <WinChance win_chance={win_chance} game_state={new_game_state} />
+        <GameBoard game_state={new_game_state} setGameState={setNewGameState} />
+      </div>
       <GamePlayersControl
         game_state={new_game_state}
         players={players}
         setGameState={setNewGameState}
         setWinChance={setWinChance}
       />
-      <WinChance win_chance={win_chance} game_state={new_game_state} />
-      <GameBoard game_state={new_game_state} setGameState={setNewGameState} />
     </div>
   );
 }

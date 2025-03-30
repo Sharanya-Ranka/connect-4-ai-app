@@ -2,7 +2,9 @@ import "../../styles/GameConfigFormStyles/GameConfigForm.css";
 import { GameState } from "../../scripts/GameState";
 import {
   MCTS_UCT_PLAYER,
+  MCTS_UCT_PLAYER_TEXTDISPLAY,
   HUMAN_PLAYER,
+  HUMAN_PLAYER_TEXTDISPLAY,
   MCTS_UCT_MONITOR_PLAYER,
   MCTS_AGENT_STRENGTHS,
   MAX_ROWS,
@@ -175,8 +177,8 @@ export default function GameConfigForm({
 
   const player_options = (
     <>
-      <option value={MCTS_UCT_PLAYER}>{MCTS_UCT_PLAYER}</option>
-      <option value={HUMAN_PLAYER}>{HUMAN_PLAYER}</option>
+      <option value={MCTS_UCT_PLAYER}>{MCTS_UCT_PLAYER_TEXTDISPLAY}</option>
+      <option value={HUMAN_PLAYER}>{HUMAN_PLAYER_TEXTDISPLAY}</option>
     </>
   );
 
@@ -192,135 +194,160 @@ export default function GameConfigForm({
 
   return (
     <div className="game-config-form">
-      <b>Game Board</b>
-      <div className="game-config-rows">
-        {/* Num rows*/}
-        <label for="num_rows">Rows</label>
-        <select
-          id="num_rows"
-          name="num_rows"
-          onChange={handleGameBoardChange}
-          value={game_config.num_rows}
-          disabled={game_state.is_game_active}
-        >
-          {row_options}
-        </select>
-      </div>
-      <div className="game-config-columns">
-        <label for="num_cols">Columns</label>
-        <select
-          id="num_cols"
-          name="num_cols"
-          onChange={handleGameBoardChange}
-          value={game_config.num_cols}
-          disabled={game_state.is_game_active}
-        >
-          {column_options}
-        </select>
-      </div>
-      <hr />
-      <b>Players</b>
-      {/* Player types */}
-      <div className="game-config-player1">
-        Player1
-        <br />
-        {/* <label for="player1">Player 1: Type</label> */}
-        <select
-          id="player1"
-          name="type"
-          onChange={(event) => handlePlayerChangeType(1, event)}
-          value={game_config.player1.type}
-          disabled={game_state.is_game_active}
-        >
-          {player_options}
-        </select>
-        {game_config.player1.type === MCTS_UCT_PLAYER ? (
-          <>
-            <label className="strength-label" for="player1_strength">
-              Strength
-            </label>
+      <div class="form-section">
+        <div class="section-title">
+          <b>Game Board</b>
+        </div>
+        <div className="form-group">
+          <div className="game-config-rows">
+            {/* Num rows*/}
+            <label for="num_rows">Rows</label>
             <select
-              id="player1_strength"
-              name="strength"
-              onChange={(event) => handlePlayerChangeStrength(1, event)}
-              value={game_config.player1.strength}
+              id="num_rows"
+              name="num_rows"
+              onChange={handleGameBoardChange}
+              value={game_config.num_rows}
               disabled={game_state.is_game_active}
             >
-              {strength_options}
+              {row_options}
             </select>
-          </>
-        ) : (
-          ""
-        )}
-      </div>
-      <div className="game-config-player2">
-        Player2
-        <br />
-        {/* <label for="player2">Player 2</label> */}
-        <select
-          id="player2"
-          name="type"
-          onChange={(event) => handlePlayerChangeType(2, event)}
-          value={game_config.player2.type}
-          disabled={game_state.is_game_active}
-        >
-          {player_options}
-        </select>
-        {game_config.player2.type === MCTS_UCT_PLAYER ? (
-          <>
-            <label className="strength-label" for="player2_strength">
-              Strength
-            </label>
+          </div>
+          <div className="game-config-columns">
+            <label for="num_cols">Columns</label>
             <select
-              id="player2_strength"
-              name="strength"
-              onChange={(event) => handlePlayerChangeStrength(2, event)}
-              value={game_config.player2.strength}
+              id="num_cols"
+              name="num_cols"
+              onChange={handleGameBoardChange}
+              value={game_config.num_cols}
               disabled={game_state.is_game_active}
             >
-              {strength_options}
+              {column_options}
             </select>
-          </>
-        ) : (
-          ""
-        )}
+          </div>
+        </div>
+        <hr />
       </div>
-      <div className="game-config-monitor">
-        Monitor (Calculates win chance)
-        <br />
-        {/* <label for="player2">Player 2</label> */}
-        <select
-          id="monitor"
-          name="type"
-          // onChange={(event) => handlePlayerChange(2, event)}
-          value={game_config.monitor.type}
-          disabled={game_state.is_game_active}
-        >
-          {monitor_option}
-        </select>
-        <>
-          <label className="strength-label" for="monitor_strength">
-            Strength
-          </label>
-          <select
-            id="monitor_strength"
-            name="strength"
-            onChange={(event) => handlePlayerChangeStrength(0, event)}
-            value={game_config.monitor.strength}
-            disabled={game_state.is_game_active}
-          >
-            {strength_options}
-          </select>
-        </>
+
+      <div class="form-section">
+        <div class="section-title">
+          <b>Players</b>
+        </div>
+        <div className="form-group">
+          {/* Player types */}
+          <div className="game-config-player1">
+            <div className="player-and-token">
+              <label for="player1" id="player1-label">
+                Player 1
+              </label>
+              <div className="token"></div>
+            </div>
+            {/* <br /> */}
+            {/* <label for="player1">Player 1: Type</label> */}
+            <select
+              id="player1"
+              name="type"
+              onChange={(event) => handlePlayerChangeType(1, event)}
+              value={game_config.player1.type}
+              disabled={game_state.is_game_active}
+            >
+              {player_options}
+            </select>
+            {game_config.player1.type === MCTS_UCT_PLAYER ? (
+              <>
+                <label className="strength-label" for="player1_strength">
+                  Strength
+                </label>
+                <select
+                  id="player1_strength"
+                  name="strength"
+                  onChange={(event) => handlePlayerChangeStrength(1, event)}
+                  value={game_config.player1.strength}
+                  disabled={game_state.is_game_active}
+                >
+                  {strength_options}
+                </select>
+              </>
+            ) : (
+              ""
+            )}
+          </div>
+          <div className="game-config-player2">
+            <div className="player-and-token">
+              <label for="player2" id="player2-label">
+                Player 2
+              </label>
+              <div className="token"></div>
+            </div>
+            {/* <br /> */}
+            {/* <label for="player2">Player 2</label> */}
+            <select
+              id="player2"
+              name="type"
+              onChange={(event) => handlePlayerChangeType(2, event)}
+              value={game_config.player2.type}
+              disabled={game_state.is_game_active}
+            >
+              {player_options}
+            </select>
+            {game_config.player2.type === MCTS_UCT_PLAYER ? (
+              <>
+                <label className="strength-label" for="player2_strength">
+                  Strength
+                </label>
+                <select
+                  id="player2_strength"
+                  name="strength"
+                  onChange={(event) => handlePlayerChangeStrength(2, event)}
+                  value={game_config.player2.strength}
+                  disabled={game_state.is_game_active}
+                >
+                  {strength_options}
+                </select>
+              </>
+            ) : (
+              ""
+            )}
+          </div>
+        </div>
+        <div className="form-group">
+          <div className="game-config-monitor">
+            <label for="player1">Win Chance Calculation</label>
+            {/* <br /> */}
+            {/* <label for="player2">Player 2</label> */}
+            <select
+              id="monitor"
+              name="type"
+              // onChange={(event) => handlePlayerChange(2, event)}
+              value={game_config.monitor.type}
+              disabled={game_state.is_game_active}
+            >
+              {monitor_option}
+            </select>
+            <>
+              <label className="strength-label" for="monitor_strength">
+                Strength
+              </label>
+              <select
+                id="monitor_strength"
+                name="strength"
+                onChange={(event) => handlePlayerChangeStrength(0, event)}
+                value={game_config.monitor.strength}
+                disabled={game_state.is_game_active}
+              >
+                {strength_options}
+              </select>
+            </>
+          </div>
+        </div>
+        <hr />
       </div>
-      <hr />
       <div>
-        <button onClick={handlePlayResetClicked}>
+        <button className="play-reset-button" onClick={handlePlayResetClicked}>
           {game_state.is_game_active ? "Reset" : "Play"}
         </button>
       </div>
       <div>
-        <button onClick={handlePausedClicked}>
+        <button className="pause-resume-button" onClick={handlePausedClicked}>
           {game_state.paused ? "Resume" : "Pause"}
         </button>
       </div>
