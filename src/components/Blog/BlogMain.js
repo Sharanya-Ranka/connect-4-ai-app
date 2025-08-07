@@ -12,13 +12,13 @@ import "react-accessible-accordion/dist/fancy-example.css";
 import { BlockMath, InlineMath } from "react-katex";
 import "katex/dist/katex.min.css"; // Import KaTeX styles
 
-import blogContent from "../../data/blogContent.json";
+import blogContent from "../../data/blogContent1.json";
 import BlogSection from "./BlogSection";
 
 function Blog() {
   const [contentData, setContentData] = React.useState([]);
 
-  console.log(blogContent);
+  // console.log(blogContent);
 
   React.useEffect(() => {
     setContentData(blogContent);
@@ -37,13 +37,21 @@ function Blog() {
     });
   };
 
+  const accordionItems = Object.entries(blogContent).map(([key, value]) => {
+    // Perform your operation here with key and value
+    return (<AccordionItem>
+      <BlogSection title={value.title} content={renderContent(value.data)} />
+    </AccordionItem>); // Example: creating an array of strings
+  });
+
   return (
     <div className="blog">
       {/* <h1>Understanding Monte Carlo Tree Search</h1> */}
-      <h1>Coming Soon!</h1>
+      {/* <h1>Coming Soon!</h1> */}
 
-      {/* <Accordion allowZeroExpanded allowMultipleExpanded={true}>
-        <AccordionItem>
+      <Accordion allowZeroExpanded allowMultipleExpanded={true}>
+        {accordionItems}
+        {/* <AccordionItem>
           <BlogSection
             title={blogContent.BlogGist.title}
             content={renderContent(blogContent.BlogGist.data)}
@@ -60,8 +68,8 @@ function Blog() {
             title={blogContent.MCTSDepth.title}
             content={renderContent(blogContent.MCTSDepth.data)}
           />
-        </AccordionItem>
-      </Accordion> */}
+        </AccordionItem> */}
+      </Accordion>
     </div>
   );
 }

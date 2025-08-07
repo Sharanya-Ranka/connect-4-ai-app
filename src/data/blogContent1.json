@@ -1,0 +1,75 @@
+{
+    "Rough Work": {
+        "title": "Rough Work",
+        "data": [
+            {
+                "type": "paragraph",
+                "value": "A quick summary on how this works"
+            },
+            {
+                "type": "paragraph",
+                "value": "A deep dive"
+            },
+            {
+                "type": "paragraph",
+                "value": "Philosophies\nComputer Science - Formulating problems as search problems\nAI - Adding Heuristic search methods"
+            },
+            {
+                "type": "paragraph",
+                "value": "Ponderings\nPositive Bias (Upper Confidence Bound)\nGenerating solutions as a search rather than \"creation\" (Being in better situations)\nGetting out of Local optima?"
+            },
+            {
+                "type": "paragraph",
+                "value": "Monte Carlo vs Las Vegas (the usefulness of stopping the search in the middle and getting an approximate answer)"
+            },
+            {
+                "type": "paragraph",
+                "value": "Any further methods (combines MCTS with Neural networks, Reinforcement learning)\nThe large complexity of Go. Simple MCTS does not help (sparse rewards)"
+            },
+            {
+                "type": "paragraph",
+                "value": "Aid in the form of Value and Policy functions - Recognizing patterns - Use data/samples effectively"
+            }
+        ]
+    },
+    "Quick Summary": {
+        "title": "Quick Summary",
+        "data": [
+            {
+                "type": "paragraph",
+                "value": "The AI Agent you're playing against uses Monte Carlo Tree Search (MCTS) with the Upper Confidence Bound for Trees (UCT)\n\\emph{heuristic} in order to (relatively) quickly come up with responses for moves. The entire evolution of a \ngame of Connect4 can be described in the form of a \\emph{GameTree}. Each game starts at the root node/state (an empty board)\nand proceeds along edges (moves by either player) to reach next states (a board with an additional yellow/red coin placed compared\nto the previous state)."
+            },
+            {
+                "type": "paragraph",
+                "value": "While it is possible to simply brute-force search all the way to the end of the game, to determine what is the best move to play, such\ntechniques tend to be extremely computationally intensive. A rough upper bound on the number of nodes would be of the order of $O()$"
+            }
+        ]
+    },
+    "A Deeper Dive": {
+        "title": "A Deeper Dive",
+        "data": [
+            {
+                "type": "paragraph",
+                "value": ""
+            }
+        ]
+    },
+    "Ponderings": {
+        "title": "Ponderings",
+        "data": [
+            {
+                "type": "paragraph",
+                "value": ""
+            }
+        ]
+    },
+    "Going Beyond MCTS": {
+        "title": "Going Beyond MCTS",
+        "data": [
+            {
+                "type": "paragraph",
+                "value": ""
+            }
+        ]
+    }
+}

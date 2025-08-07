@@ -14,9 +14,28 @@
   font-size: 2.5rem;
   margin-bottom: 20px;
   color: #2c3e50; /* Darker title color */
-}
+ }
 
 .blog p {
   margin-bottom: 15px; /* Increased paragraph spacing */
-  font-size: 1rem;
+   font-size: 1rem; 
+}
+
+
+.accordion__button {
+  color: var(--primary-dark);
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.accordion__heading {
+  background-color: var(--light);
+}
+
+.accordion__panel{
+  background-color: white;
+}
+
+.accordion{
+  box-shadow: var(--shadow);
 }

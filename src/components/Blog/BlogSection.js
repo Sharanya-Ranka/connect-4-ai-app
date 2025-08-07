@@ -13,7 +13,8 @@ function BlogSection({ title, content }) {
   return (
     <AccordionItem>
       <AccordionItemHeading>
-        <AccordionItemButton>{title}</AccordionItemButton>
+        <AccordionItemButton>
+        {title}</AccordionItemButton>
       </AccordionItemHeading>
       <AccordionItemPanel>{content}</AccordionItemPanel>
     </AccordionItem>
