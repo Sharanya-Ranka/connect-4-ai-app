@@ -46,11 +46,11 @@ function Blog() {
 
   return (
     <div className="blog">
-      {/* <h1>Understanding Monte Carlo Tree Search</h1> */}
-      {/* <h1>Coming Soon!</h1> */}
+      <h1>Understanding Monte Carlo Tree Search</h1>
+      <h1>Coming Soon!</h1>
 
       <Accordion allowZeroExpanded allowMultipleExpanded={true}>
-        {accordionItems}
+        {/* {accordionItems} */}
         {/* <AccordionItem>
           <BlogSection
             title={blogContent.BlogGist.title}
