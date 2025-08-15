@@ -1,12 +1,16 @@
 import time
+import os
 
-from threadpoolctl import threadpool_info
+os.environ["OPENBLAS_NUM_THREADS"] = "64"
+# os.environ["MKL_NUM_THREADS"] = "2"
+# os.environ["OMP_NUM_THREADS"] = "8"
+# from threadpoolctl import threadpool_info
+
 
 
 import numpy as np
-
 # print(threadpool_info())
-
+# print(np.show_config())
 
 def perform_matrix_multiplication(size):
     """Generates two random matrices and multiplies them."""
@@ -22,6 +26,8 @@ if __name__ == "__main__":
     # Define matrix size
     matrix_size = 5000  # A good size to show significant computation
 
+    
+
     # Number of matrix multiplications to perform
     num_multiplications = 8
 
@@ -31,7 +37,6 @@ if __name__ == "__main__":
 
     total_time = 0
     for i in range(num_multiplications):
-        # pass
         print(f"  Performing multiplication {i+1}...")
         elapsed_time = perform_matrix_multiplication(matrix_size)
         total_time += elapsed_time

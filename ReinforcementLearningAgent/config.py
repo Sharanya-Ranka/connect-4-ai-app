@@ -1,69 +1,85 @@
+# Global configs
 UNIQUE_TOKENS = 3
 NUM_ROWS = 6
 NUM_COLS = 7
 
-NUM_PLAYOUTS = 500
-NUM_ITERATIONS = 2
-GAMES_PER_ITERATION = 10
-
-TEST_SIZE = 0.2
-LEARNING_RATE = 0.01
-EPOCHS = 2
-HIDDEN_DIM = 100
-BATCH_SIZE = 16
-
-NUM_CNN_FILTERS = 32
-KERNEL_SIZE = 3
-NUM_RESIDUAL_BLOCKS = 5
-DROPOUT_RATE = 0.3
-POLICY_HEAD_FILTERS = 16
-VALUE_HEAD_FILTERS = 16
+# Global config (Dict format)
+GLOBAL_CONFIG = dict(
+    UNIQUE_TOKENS=UNIQUE_TOKENS,
+    NUM_ROWS=NUM_ROWS,
+    NUM_COLS=NUM_COLS,
+)
 
 
-def getModelConfig():
-    model_config = dict(
-        NUM_CNN_FILTERS=NUM_CNN_FILTERS,
-        KERNEL_SIZE=KERNEL_SIZE,
-        NUM_RESIDUAL_BLOCKS=NUM_RESIDUAL_BLOCKS,
-        DROPOUT_RATE=DROPOUT_RATE,
-        POLICY_HEAD_FILTERS=POLICY_HEAD_FILTERS,
-        VALUE_HEAD_FILTERS=VALUE_HEAD_FILTERS,
+N_MULTIPROCESS_GAME_RUNNERS = 4
+# Self play config
+SELF_PLAY_CONFIG = dict(
+    USE_MULTIPROCESSING=True,
+    N_MULTIPROCESS_GAME_RUNNERS=N_MULTIPROCESS_GAME_RUNNERS,
+    
+    NUM_ITERATIONS=120,
+    START_FROM_ITERATION=103,
+    NUM_DATAPOINTS_PER_GAME=5,
+    NUM_LEGACY_ITERATIONS_DATA=10,
+    GAMES_PER_ITERATION=15 * N_MULTIPROCESS_GAME_RUNNERS,
+    
+    INITIAL_TEMPERATURE=5,
+    TEMPERATURE_DELTA_FACTOR=0.75,
+    MIN_TEMPERATURE=0.1,
+    TEMPERATURE_RESET_ITERATION=15,
+    **GLOBAL_CONFIG,
+)
+
+# Agent config
+AGENT_CONFIG = dict(
+    UCT_C_COEFF=1,
+    NUM_PLAYOUTS=400,
+    **GLOBAL_CONFIG,
+)
+
+# Model config
+MODEL_CONFIG = dict(
+    NUM_CNN_FILTERS=64,
+    KERNEL_SIZE=5,
+    NUM_RESIDUAL_BLOCKS=9,
+    DROPOUT_RATE=0.2,
+    POLICY_HEAD_FILTERS=64,
+    VALUE_HEAD_FILTERS=32,
+    **GLOBAL_CONFIG,
+)
+
+# Training config
+TRAINING_CONFIG = dict(
+    TEST_SIZE=0.2,
+    LEARNING_RATE=0.002,
+    EPOCHS=4,
+    BATCH_SIZE=32,
+    BASE_PATH="ModelCheckpoints/debug_model",
+)
+
+
+def getAgentFullConfig():
+    agent_config = dict(
+        GLOBAL_CONFIG=GLOBAL_CONFIG,
+        MODEL_CONFIG=MODEL_CONFIG,
+        TRAINING_CONFIG=TRAINING_CONFIG,
+        AGENT_CONFIG=AGENT_CONFIG,
     )
-    return model_config
+
+    return agent_config
 
 
-def getAgentConfig():
-    debug_agent_config = dict(
-        UCT_C_COEFF=1,  # Hardcoded in DeepNNAndMCTSAgent
-        NUM_PLAYOUTS=NUM_PLAYOUTS,  # Needs to be defined in the config passed to DeepNNAndMCTSAgent
-        MODEL_WEIGHTS_SOURCE=None,  # Needs to be defined in the config passed to PolicyAndValueFunction
-        NUM_ROWS=NUM_ROWS,  # Needs to be defined in the config passed to PolicyAndValueNetwork
-        NUM_COLS=NUM_COLS,  # Needs to be defined in the config passed to PolicyAndValueNetwork
-        UNIQUE_TOKENS=UNIQUE_TOKENS,  # Needs to be defined in the config passed to PolicyAndValueNetwork
-        HIDDEN_DIM=HIDDEN_DIM,  # Needs to be defined in the config passed to PolicyAndValueNetwork
-        DATASET=None,  # Needs to be defined in the config passed to SelfPlayDataset
-        LEARNING_RATE=LEARNING_RATE,  # Needs to be defined in the config passed to PolicyAndValueTrainer
-        BATCH_SIZE=BATCH_SIZE,
-        EPOCHS=EPOCHS,  # Needs to be defined in the config passed to PolicyAndValueTrainer
-        TEST_SIZE=TEST_SIZE,
-        **getModelConfig(),
+def getSelfPlayFullConfig():
+    # from Agent.deepnn_and_mcts_agent import DeepNNAndMCTSAgent
+
+    AGENT_FULL_CONFIG = getAgentFullConfig()
+
+    self_play_config = dict(
+        **AGENT_FULL_CONFIG,
+        SELF_PLAY_CONFIG=SELF_PLAY_CONFIG,
     )
 
-    return debug_agent_config
-
-
-def getSelfPlayConfig():
-    from Agent.deepnn_and_mcts_agent import DeepNNAndMCTSAgent
-
-    debug_agent_config = getAgentConfig()
-
-    debug_config = dict(
-        AGENT=DeepNNAndMCTSAgent(debug_agent_config),  # Placeholder, as it's an object
-        ITERATIONS=NUM_ITERATIONS,  # This is `model_iterations`, needs to be defined in the config passed to SelfPlayTrainingOrchestrator
-        GAMES_PER_ITERATION=GAMES_PER_ITERATION,  # Needs to be defined in the config passed to SelfPlayTrainingOrchestrator
-    )
-
-    return debug_config
+    return self_play_config
 
 
 class DebugManager:

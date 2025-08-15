@@ -1,6 +1,16 @@
+import torch
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from functools import reduce
+
+
+
 import numpy as np
 
 from Agent.deepnn_and_mcts_agent import DeepNNAndMCTSAgent
+from Agent.policy_and_value_model import loadModel, saveModel, createNewModel
+from Agent.policy_and_value_model import PolicyAndValueTrainer
+
 from GameImplementation.game_state import GameState
 from config import debugObj
 
@@ -8,14 +18,20 @@ from config import debugObj
 class SelfPlayOrchestrator:
     def __init__(self, config):
         self.config = config
+        self.sp_config = config["SELF_PLAY_CONFIG"]
+
+        self.initializeAgent()
 
     def initializeAgent(self):
+        # Config should consist of atleast the model config and the agent config
         self.agent = DeepNNAndMCTSAgent(self.config)
 
     def selfPlayPipeline(self):
+        # print(f"Started pipeline")
         all_games_data = []
-        for game_num in range(self.config["NUM_GAMES"]):
+        for game_num in range(self.sp_config["NUM_GAMES"]):
             all_games_data.append(self.playAGame())
+            # print(f"Completed game {game_num}")
 
         return all_games_data
 
@@ -23,14 +39,18 @@ class SelfPlayOrchestrator:
         state = GameState()
         current_game_data = []
         while not state.isTerminal():
+            # print(f"Next state")
             action_info = self.agent.getActionWithInfo(state)
+            # print(f"Got action info")
             current_game_data.append([state, -1, action_info["empirical_action_probs"]])
 
-            action = action_info["action"]
+            action = self.chooseTemperatureBasedAction(
+                action_info["empirical_action_probs"]
+            )
             state = state.applyMove(action)
 
         for i in range(len(current_game_data)):
-            inter_state = current_game_data[i]
+            inter_state = current_game_data[i][0]
 
             state_value = (
                 0
@@ -43,79 +63,191 @@ class SelfPlayOrchestrator:
             # if debugObj.iteration == 0 and i == 0:
             #     print(f"First state={inter_state}\n{state_value}")
 
+        # breakpoint()
+
         return current_game_data
+
+    def chooseTemperatureBasedAction(self, empirical_action_probs):
+        # Empirical action probs are of the form N_i/sum_j N_j
+        # Temperature based is N_i^(1/t) / sum_j N_j^(1/t)
+        max_prob = np.max(empirical_action_probs)
+        temperature_based_units = np.power(
+            empirical_action_probs / max_prob, 1 / self.sp_config["CURRENT_TEMPERATURE"]
+        )
+        temperature_based_probs = temperature_based_units / np.sum(
+            temperature_based_units
+        )
+
+        action = np.random.choice(self.sp_config["NUM_COLS"], p=temperature_based_probs)
+
+        return action
+
+
+def selfPlayRunnerFunction(config):
+    sp = SelfPlayOrchestrator(config=config)
+    return sp.selfPlayPipeline()
 
 
 class TrainingOrchestrator:
     def __init__(self, config):
         self.config = config
+        self.model_config = config["MODEL_CONFIG"]
 
     def trainingPipeline(self):
-        pass
+        model = loadModel(self.model_config)
+        tr = PolicyAndValueTrainer(self.config)
+        tr.runTrainPipeline(model, self.config["DATA"])
+        saveModel(
+            dict(
+                MODEL=model,
+                SAVE_PATH=self.config["MODEL_SAVE_FULLPATH"],
+            )
+        )
+
+    def setUp(self):
+        model = createNewModel(self.model_config)
+        saveModel(
+            dict(
+                MODEL=model,
+                SAVE_PATH=self.config["MODEL_SAVE_FULLPATH"],
+            )
+        )
 
 
 class SelfPlayAndTrainingOrchestrator:
     def __init__(self, config):
         self.config = config
-        self.agent: DeepNNAndMCTSAgent = config["AGENT"]
-        self.model_iterations: int = config["ITERATIONS"]
-        self.games_per_iteration: int = config["GAMES_PER_ITERATION"]
+        self.sp_config = config["SELF_PLAY_CONFIG"]
+        self.tr_config = config["TRAINING_CONFIG"]
+        self.model_config = config["MODEL_CONFIG"]
+        self.agent_config = config["AGENT_CONFIG"]
+
+        self.game_data_store = []
 
     def overallPipeline(self):
-        debugObj.updateIteration(setZero=True)
-
-        for iteration in range(self.model_iterations):
-            self.performIteration()
+        start_iteration = self.sp_config.get('START_FROM_ITERATION', 1)
+        end_iteration = self.sp_config["NUM_ITERATIONS"]
+        for iteration in range(start_iteration, end_iteration + 1 ):
+            if iteration == 1:
+                self.setUp()
+                
+            self.performIteration(iteration=iteration)
             debugObj.updateIteration()
 
-    def performIteration(self):
-        plys_in_games = []
-        num_playouts = np.arange(100, self.games_per_iteration * 100 + 1, 100)
-        for game_num in range(self.games_per_iteration):
-            # num_plys = self._playAGame()
-            num_plys = self._playAGameWithSetPlayouts(num_playouts[game_num])
-            print(
-                f"Game {game_num} Num playouts {num_playouts[game_num]} Num plys {num_plys}"
+    def setUp(self):
+        setup_config = self.getIterationTrainingConfig(iteration=0, game_data=None)
+        tr = TrainingOrchestrator(config=setup_config)
+        tr.setUp()
+
+    def getModelPathForIteration(self, iteration=0):
+        return os.path.join(self.tr_config["BASE_PATH"], f"iteration_{iteration}.pth")
+
+    def getTemperatureForIteration(self, iteration=0):
+        initial_temp = self.sp_config["INITIAL_TEMPERATURE"]
+        temp_factor = self.sp_config["TEMPERATURE_DELTA_FACTOR"]
+        min_temp = self.sp_config["MIN_TEMPERATURE"]
+        eff_iteration = iteration % self.sp_config["TEMPERATURE_RESET_ITERATION"]
+
+        
+
+        return max(min_temp, np.power(temp_factor, eff_iteration - 1) * initial_temp)
+
+    def getIterationSelfPlayConfig(self, iteration=0):
+        model_config = self.model_config.copy()
+        model_config["MODEL_WEIGHTS_SOURCE"] = self.getModelPathForIteration(
+            iteration - 1
+        )
+
+        current_temperature = self.getTemperatureForIteration(iteration=iteration)
+        print(f"Temperature for iteration {iteration} is {current_temperature:.4f}")
+
+        self_play_config = dict(
+            AGENT_CONFIG=self.agent_config,
+            MODEL_CONFIG=model_config,
+            SELF_PLAY_CONFIG=dict(
+                NUM_COLS=self.sp_config["NUM_COLS"],
+                CURRENT_TEMPERATURE=current_temperature,
+            ),
+        )
+
+        if self.sp_config.get("USE_MULTIPROCESSING", False) == False:
+            self_play_config["SELF_PLAY_CONFIG"]["NUM_GAMES"] = self.sp_config[
+                "GAMES_PER_ITERATION"
+            ]
+
+        else:
+            max_workers = self.sp_config["N_MULTIPROCESS_GAME_RUNNERS"]
+            self_play_config["SELF_PLAY_CONFIG"]["NUM_GAMES"] = int(
+                self.sp_config["GAMES_PER_ITERATION"] / max_workers
             )
 
-            plys_in_games.append(num_plys)
-            debugObj.updateGameInIteration()
+        return self_play_config
 
-        print(f"Iteration {debugObj.iteration} : Average plys {np.mean(plys_in_games)}")
+    def selectRandomStates(self, game_states, num_samples):
+        sample = np.random.choice(len(game_states), size=num_samples, replace=False)
 
-        self._trainNNModel()
+        return list(game_states[ind] for ind in sample)
 
-    def _playAGameWithSetPlayouts(self, n_playouts=10):
-        self.agent.config["NUM_PLAYOUTS"] = n_playouts
-        return self._playAGame()
+    def updateGameDataStore(self, cur_iter_game_data):
+        num_samples_per_game = self.sp_config.get('NUM_DATAPOINTS_PER_GAME', 5)
+        cur_iter_game_samples = [self.selectRandomStates(single_game_data, num_samples_per_game) for single_game_data in cur_iter_game_data]
 
-    def _playAGame(self):
-        state = GameState()
-        current_game_training_data = []
-        while not state.isTerminal():
-            action_info = self.agent.getActionWithInfo(state)
-            current_game_training_data.append(
-                (state, action_info["empirical_action_probs"])
-            )
+        self.game_data_store += cur_iter_game_samples
+        max_datapoints = self.sp_config['GAMES_PER_ITERATION'] * self.sp_config['NUM_LEGACY_ITERATIONS_DATA']
+        self.game_data_store = self.game_data_store[-max_datapoints:]
+        
 
-            action = action_info["action"]
-            state = state.applyMove(action)
-            debugObj.updateTurn()
+    def getIterationTrainingConfig(self, iteration=0, game_data=None):
+        model_config = self.model_config.copy()
+        model_config["MODEL_WEIGHTS_SOURCE"] = (
+            None if iteration < 1 else self.getModelPathForIteration(iteration - 1)
+        )
 
-        for i, (inter_state, action_probs) in enumerate(current_game_training_data):
-            state_value = (
-                0
-                if state.getWinner() == GameState.NOONE
-                else -1 if inter_state.next_player == state.getWinner() else 1
-            )
+        flattened_game_data = (
+            None if game_data is None else reduce(lambda x, y: x + y, game_data, [])
+        )
 
-            # if debugObj.iteration == 0 and i == 0:
-            #     print(f"First state={inter_state}\n{state_value}")
+        tr_config = dict(
+            DATA=flattened_game_data,
+            MODEL_CONFIG=model_config,
+            TRAINING_CONFIG=self.tr_config,
+            MODEL_SAVE_FULLPATH=self.getModelPathForIteration(iteration),
+        )
+        return tr_config
 
-            self.agent.saveToTrainingData(inter_state, state_value, action_probs)
+    def performIteration(self, iteration=0):
+        self_play_config = self.getIterationSelfPlayConfig(iteration=iteration)
 
-        return len(current_game_training_data)
+        if self.sp_config.get("USE_MULTIPROCESSING", False) == False:
+            # No multiprocessing
+            sp = SelfPlayOrchestrator(config=self_play_config)
+            # breakpoint()
+            all_game_data = sp.selfPlayPipeline()
+        else:
+            # Use multiprocessing
+            max_workers = self.sp_config["N_MULTIPROCESS_GAME_RUNNERS"]
+            all_game_data = []
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                futures = {
+                    executor.submit(selfPlayRunnerFunction, self_play_config)
+                    for worker in range(max_workers)
+                }
 
-    def _trainNNModel(self):
-        self.agent.trainNetwork()
-        self.agent.clearTrainingData()
+                for future in as_completed(futures):
+                    process_game_data = future.result()
+                    all_game_data.extend(process_game_data)
+
+        # print(f"Iteration {debugObj.iteration} : Average plys {np.mean(plys_in_games)}")
+
+        self.updateGameDataStore(all_game_data)
+
+        train_config = self.getIterationTrainingConfig(
+            iteration, game_data=self.game_data_store
+        )
+        # breakpoint()
+        tr = TrainingOrchestrator(config=train_config)
+        training_results = tr.trainingPipeline()
+        self.processTrainingResults(training_results)
+
+    def processTrainingResults(self, training_results):
+        pass

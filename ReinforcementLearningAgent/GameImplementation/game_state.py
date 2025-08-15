@@ -136,6 +136,10 @@ class GameState:
         """Returns the player index for the next move."""
         return self.RED if self.move_count % 2 == 0 else self.YELLOW
 
+    @property
+    def next_player_str(self):
+        return "RED" if self.next_player == self.RED else "YELLOW"
+
     def applyMove(self, col):
         """Returns a new GameState after applying a move in the given column."""
         if self.state[0, col] != self.EMPTY:
@@ -317,15 +321,16 @@ class MCTSGameState:
     def __init__(self, state: GameState, parent_state=None, last_move=-1):
         self.state = state
         num_moves = state.cols
-        self.q = np.array([0] * num_moves, dtype=np.float32)  # Mean action value
-        self.w = np.array([0] * num_moves, dtype=np.float32)  # Total action value
-        self.visits = np.array(
-            [0] * num_moves, dtype=np.float32
-        )  # Number of visits to each child
+
+        self.w = 0  # Total Action Value to get to this state from its parent (from immediate previous player's perspective)
+        self.q = 0  # Mean Action value to get to this state from its parent (from immediate previous player's perspective)
+        self.v = 0  # State value for this state (from immediate previous player's perspective)
+        self.visits = 0  # Visits to this state
+
         self.prior = np.array(
             [0] * num_moves, dtype=np.float32
         )  # Prior (action probabilities for children)
-        self.v = 0
+
         self.is_leaf = True
         self.children = None
         self.parent: MCTSGameState = parent_state

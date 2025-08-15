@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import os
 from functools import lru_cache
 
 from torch.utils.data import Dataset, DataLoader
@@ -8,6 +9,34 @@ from sklearn.model_selection import train_test_split
 from GameImplementation.game_state import GameState
 from Agent.policy_and_value_nn import ConvolutionalPAndVNetwork
 from config import UNIQUE_TOKENS, NUM_ROWS, NUM_COLS, debugObj
+
+
+def createNewModel(config):
+    model = ConvolutionalPAndVNetwork(config)
+    model.eval()
+
+    return model
+
+
+def loadModel(config):
+    model = ConvolutionalPAndVNetwork(config)
+    weights_source = config.get("MODEL_WEIGHTS_SOURCE", None)
+    # print(f"Loading model from path={weights_source}")
+
+    assert weights_source is not None
+
+    model.load_state_dict(torch.load(weights_source, weights_only=True))
+    model.eval()
+    return model
+
+
+def saveModel(config):
+    model = config["MODEL"]
+    save_path = config["SAVE_PATH"]
+    save_dir = os.path.dirname(save_path)
+    os.makedirs(save_dir, exist_ok=True)
+
+    torch.save(model.state_dict(), save_path)
 
 
 def preprocessState(state: GameState):
@@ -50,8 +79,7 @@ class PolicyAndValueFunction:
         return state_value.numpy(), action_probabilities.numpy()
 
     def _getPolicyAndValueNetwork(self):
-        if self.config["MODEL_WEIGHTS_SOURCE"] == None:
-            return ConvolutionalPAndVNetwork(self.config)
+        return loadModel(self.config)
 
 
 class SelfPlayDataset(Dataset):
@@ -65,11 +93,7 @@ class SelfPlayDataset(Dataset):
         return len(self.raw_data)
 
     def __getitem__(self, index):
-        state, state_val, action_probs = self.processed_data[index]
-
-        state_t = torch.tensor(state, dtype=torch.float32)
-        state_val_t = torch.tensor(state_val, dtype=torch.float32)
-        action_probs_t = torch.tensor(action_probs, dtype=torch.float32)
+        state_t, state_val_t, action_probs_t = self.processed_data[index]
         # breakpoint()
 
         return state_t, state_val_t, action_probs_t
@@ -77,7 +101,13 @@ class SelfPlayDataset(Dataset):
     def _processDataset(self, raw_dataset):
         processed_dataset = []
         for state, state_val, action_probs in raw_dataset:
-            processed_dataset.append((preprocessState(state), state_val, action_probs))
+            # state_t = torch.tensor(state, dtype=torch.float32)
+            state_val_t = torch.tensor(state_val, dtype=torch.float32)
+            action_probs_t = torch.tensor(action_probs, dtype=torch.float32)
+
+            processed_dataset.append(
+                (preprocessState(state), state_val_t, action_probs_t)
+            )
 
         # breakpoint()
 
@@ -87,6 +117,8 @@ class SelfPlayDataset(Dataset):
 class PolicyAndValueTrainer:
     def __init__(self, config):
         self.config = config
+        self.tr_config = config["TRAINING_CONFIG"]
+
         self.mse_loss_criterion = torch.nn.MSELoss()
         self.ce_loss_criterion = torch.nn.CrossEntropyLoss()
 
@@ -104,7 +136,7 @@ class PolicyAndValueTrainer:
     def loadData(self, data):
         total_indices = np.arange(len(data))
         train_indices, test_indices = train_test_split(
-            total_indices, test_size=self.config["TEST_SIZE"]
+            total_indices, test_size=self.tr_config["TEST_SIZE"]
         )
         # breakpoint()
 
@@ -117,16 +149,16 @@ class PolicyAndValueTrainer:
         self.test_dataset = SelfPlayDataset(test_config)
 
         self.train_dataloader = DataLoader(
-            self.train_dataset, batch_size=self.config["BATCH_SIZE"], shuffle=False
+            self.train_dataset, batch_size=self.tr_config["BATCH_SIZE"], shuffle=True
         )
         self.test_dataloader = DataLoader(
-            self.test_dataset, batch_size=self.config["BATCH_SIZE"]
+            self.test_dataset, batch_size=self.tr_config["BATCH_SIZE"]
         )
 
     def setUpModel(self, model):
         self.model = model
         self.optimizer = torch.optim.Adam(
-            model.parameters(), lr=self.config["LEARNING_RATE"]
+            model.parameters(), lr=self.tr_config["LEARNING_RATE"]
         )
 
     def _calculateLoss(self, true, pred):
@@ -143,39 +175,47 @@ class PolicyAndValueTrainer:
         total_loss = mse_loss + ce_loss
         # total_loss = mse_loss
 
-        if (
-            debugObj.iteration == 2
-            and (debugObj.epoch == 14 or debugObj.epoch == 0)
-            and debugObj.batch == 1
-        ):
-            pass
-            # debug_mse_loss = self.debug_mse_loss_criterion(pred[0], true[0])
-            # debug_ce_loss = self.debug_ce_loss_criterion(pred[1], true[1])
-            # print(f"Epoch={debugObj.epoch}")
-            # print(f"True={true}\nPred={pred}")
-            # print(f"Debug MSE loss={debug_mse_loss}\nDebug CE loss={debug_ce_loss}\n")
+        # if (
+        #     debugObj.iteration == 2
+        #     and (debugObj.epoch == 14 or debugObj.epoch == 0)
+        #     and debugObj.batch == 1
+        # ):
+        #     pass
+        # debug_mse_loss = self.debug_mse_loss_criterion(pred[0], true[0])
+        # debug_ce_loss = self.debug_ce_loss_criterion(pred[1], true[1])
+        # print(f"Epoch={debugObj.epoch}")
+        # print(f"True={true}\nPred={pred}")
+        # print(f"Debug MSE loss={debug_mse_loss}\nDebug CE loss={debug_ce_loss}\n")
         # breakpoint()
         return mse_loss, ce_loss
 
     def train(self):
-        debugObj.updateEpoch(setZero=True)
+        # debugObj.updateEpoch(setZero=True)
 
         train_mse_losses = []
         train_ce_losses = []
         eval_mse_losses = []
         eval_ce_losses = []
 
-        for epoch in range(self.config["EPOCHS"]):
+        train_eval_mse_loss, train_eval_ce_loss = self.evalEpoch(self.train_dataloader)
+        print(
+            f"(Initial) Train mse loss={train_eval_mse_loss:.5f} Train ce loss={train_eval_ce_loss:.5f}"
+        )
+        
+        for epoch in range(self.tr_config["EPOCHS"]):
             # print(f"Epoch: {epoch}")
+
+            
             train_mse_loss, train_ce_loss = self.trainEpoch()
-            eval_mse_loss, eval_ce_loss = self.evalEpoch()
+            eval_mse_loss, eval_ce_loss = self.evalEpoch(self.test_dataloader)
 
             train_mse_losses.append(train_mse_loss)
             train_ce_losses.append(train_ce_loss)
             eval_mse_losses.append(eval_mse_loss)
             eval_ce_losses.append(eval_ce_loss)
 
-            debugObj.updateEpoch()
+            # debugObj.updateEpoch()
+
 
         print(
             f"Train mse loss={train_mse_losses[-1]:.5f} Train ce loss={train_ce_losses[-1]:.5f} Eval mse loss={eval_mse_losses[-1]:.5f} Eval ce loss={eval_ce_losses[-1]:.5f}"
@@ -191,7 +231,7 @@ class PolicyAndValueTrainer:
 
         self.model.train()
 
-        debugObj.updateBatch(setZero=True)
+        # debugObj.updateBatch(setZero=True)
         for state, target_state_val, target_policy in self.train_dataloader:
             pred_state_val, pred_policy = self.model(state)
             mse_loss, ce_loss = self._calculateDebugLoss(
@@ -209,21 +249,21 @@ class PolicyAndValueTrainer:
             batches_ce_loss += ce_loss.item()
 
             num_batches += 1
-            debugObj.updateBatch()
+            # debugObj.updateBatch()
 
         # print(f"TrainLoss={batches_loss/num_batches:.5f}")
         return float(batches_mse_loss / num_batches), float(
             batches_ce_loss / num_batches
         )
 
-    def evalEpoch(self):
+    def evalEpoch(self, dataloader):
         batches_mse_loss = 0
         batches_ce_loss = 0
         num_batches = 0
 
         self.model.eval()
 
-        for state, target_state_val, target_policy in self.test_dataloader:
+        for state, target_state_val, target_policy in dataloader:
             pred_state_val, pred_policy = self.model(state)
             mse_loss, ce_loss = self._calculateDebugLoss(
                 (target_state_val, target_policy), (pred_state_val, pred_policy)

@@ -96,7 +96,8 @@ class ConvolutionalPAndVNetwork(nn.Module):
         # effectively performing global average pooling.
         self.policy_pool = nn.AdaptiveAvgPool2d((1, 1))
         # Linear layer to output logits for each column (action)
-        self.policy_fc = nn.Linear(policy_head_filters, num_cols)
+        self.policy_fc1 = nn.Linear(policy_head_filters, policy_head_filters//2)
+        self.policy_fc2 = nn.Linear(policy_head_filters//2, num_cols)
         self.policy_dropout = nn.Dropout(dropout_rate)
 
         # --- Value Head ---
@@ -109,10 +110,10 @@ class ConvolutionalPAndVNetwork(nn.Module):
         self.value_pool = nn.AdaptiveAvgPool2d((1, 1))
         # Linear layer to output a single value
         self.value_fc1 = nn.Linear(
-            value_head_filters, num_filters // 2
+            value_head_filters, value_head_filters // 2
         )  # Intermediate linear layer
         self.value_fc2 = nn.Linear(
-            num_filters // 2, 1
+            value_head_filters // 2, 1
         )  # Final linear layer for scalar output
         self.value_dropout = nn.Dropout(dropout_rate)
 
@@ -150,7 +151,8 @@ class ConvolutionalPAndVNetwork(nn.Module):
         # Apply dropout
         policy_x = self.policy_dropout(policy_x)
         # Final linear layer for policy logits
-        policy_op = self.policy_fc(policy_x)  # Output logits
+        policy_x = F.relu(self.policy_fc1(policy_x))
+        policy_op =   self.policy_fc2(policy_x) # Output logits
 
         # --- Value Head Forward Pass ---
         # Apply 1x1 convolution, batch norm, and ReLU

@@ -2,9 +2,11 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
 
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+# os.environ["MKL_NUM_THREADS"] = "1"
+# os.environ["OMP_NUM_THREADS"] = "1"
 
 import numpy as np
-
 
 def perform_matrix_multiplication_parallel(size, worker_id):
     """
@@ -33,12 +35,12 @@ if __name__ == "__main__":
     # Number of matrix multiplications to perform
     num_multiplications = 8
 
-    os.environ["OPENBLAS_NUM_THREADS"] = "1"
-    os.environ["MKL_NUM_THREADS"] = "1"
-    os.environ["OMP_NUM_THREADS"] = "1"
+    # os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    # os.environ["MKL_NUM_THREADS"] = "1"
+    # os.environ["OMP_NUM_THREADS"] = "1"
 
     # Get the number of available logical cores
-    num_cores = os.cpu_count()
+    num_cores = num_multiplications #os.cpu_count()
     if num_cores is None:
         num_cores = 1
 
