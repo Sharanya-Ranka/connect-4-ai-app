@@ -44,8 +44,7 @@ def loadModel(config):
     model.load_state_dict(torch.load(weights_source, weights_only=True))
     model.eval()
     model = model.to(device)
-    
-    
+
     return model
 
 
@@ -81,7 +80,7 @@ class PolicyAndValueFunction:
             print("GPU is available. Using CUDA device.")
         else:
             device = torch.device("cpu")
-        
+
         self.device = device
 
     def updateModelIter(self):
@@ -91,6 +90,7 @@ class PolicyAndValueFunction:
         processed_states = [preprocessState(state) for state in states]
         # Add batch dimension
         processed_states = torch.stack(processed_states, dim=0)
+        # breakpoint()
         with torch.no_grad():
             processed_states = processed_states.to(self.device)
             state_value, action_logits = self.pv_network(processed_states)
@@ -102,11 +102,11 @@ class PolicyAndValueFunction:
 
         return state_value, action_probabilities
 
-    def evaluateFunction(self, state: GameState):
-        if (self.model_iter, state) not in self.cache:
-            self.cache[(self.model_iter, state)] = self._evaluateFunction(state)
+    # def evaluateFunction(self, state: GameState):
+    #     if (self.model_iter, state) not in self.cache:
+    #         self.cache[(self.model_iter, state)] = self._evaluateFunction(state)
 
-        return self.cache[(self.model_iter, state)]
+    #     return self.cache[(self.model_iter, state)]
 
     def _evaluateFunction(self, state: GameState):
         processed_state = preprocessState(state)
@@ -175,7 +175,7 @@ class PolicyAndValueTrainer:
             print("GPU is available. Using CUDA device.")
         else:
             device = torch.device("cpu")
-        
+
         self.device = device
 
     def runTrainPipeline(self, model, data):
@@ -254,11 +254,10 @@ class PolicyAndValueTrainer:
         print(
             f"(Initial) Train mse loss={train_eval_mse_loss:.5f} Train ce loss={train_eval_ce_loss:.5f}"
         )
-        
+
         for epoch in range(self.tr_config["EPOCHS"]):
             print(f"Epoch: {epoch}")
 
-            
             train_mse_loss, train_ce_loss = self.trainEpoch()
             eval_mse_loss, eval_ce_loss = self.evalEpoch(self.test_dataloader)
 
@@ -270,9 +269,8 @@ class PolicyAndValueTrainer:
             # debugObj.updateEpoch()
 
             print(
-            f"Train mse loss={train_mse_loss:.5f} Train ce loss={train_ce_loss:.5f} Eval mse loss={eval_mse_loss:.5f} Eval ce loss={eval_ce_loss:.5f}"
-        )
-
+                f"Train mse loss={train_mse_loss:.5f} Train ce loss={train_ce_loss:.5f} Eval mse loss={eval_mse_loss:.5f} Eval ce loss={eval_ce_loss:.5f}"
+            )
 
         print(
             f"Train mse loss={train_mse_losses[-1]:.5f} Train ce loss={train_ce_losses[-1]:.5f} Eval mse loss={eval_mse_losses[-1]:.5f} Eval ce loss={eval_ce_losses[-1]:.5f}"
@@ -293,7 +291,7 @@ class PolicyAndValueTrainer:
             state = state.to(self.device)
             target_state_val = target_state_val.to(self.device)
             target_policy = target_policy.to(self.device)
-            
+
             pred_state_val, pred_policy = self.model(state)
             mse_loss, ce_loss = self._calculateDebugLoss(
                 (target_state_val, target_policy), (pred_state_val, pred_policy)
@@ -328,7 +326,7 @@ class PolicyAndValueTrainer:
             state = state.to(self.device)
             target_state_val = target_state_val.to(self.device)
             target_policy = target_policy.to(self.device)
-            
+
             pred_state_val, pred_policy = self.model(state)
             mse_loss, ce_loss = self._calculateDebugLoss(
                 (target_state_val, target_policy), (pred_state_val, pred_policy)

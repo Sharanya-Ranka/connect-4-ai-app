@@ -31,9 +31,11 @@ class SelfPlayOrchestrator:
         # print(f"Started pipeline")
         all_games_data = []
         for game_num in range(self.sp_config["NUM_GAMES"]):
-            
+
             all_games_data.append(self.playAGame())
-            # print(f"Completed game {game_num}")
+            print(f"Completed game {game_num}")
+            print(f"Agent cache size={len(self.agent.state_cache)}")
+            # breakpoint()
             # profiler = cProfile.Profile()
             # profiler.enable()
             # all_games_data.append(self.playAGame())
@@ -42,7 +44,6 @@ class SelfPlayOrchestrator:
             # # Print the statistics
             # stats = pstats.Stats(profiler).sort_stats("tottime")  # Sort by cumulative time
             # stats.print_stats(50)  # Print top 50 functions
-
 
         return all_games_data
 
@@ -86,9 +87,13 @@ class SelfPlayOrchestrator:
     def chooseTemperatureBasedAction(self, empirical_action_probs, ply=0):
         # Empirical action probs are of the form N_i/sum_j N_j
         # Temperature based is N_i^(1/t) / sum_j N_j^(1/t)
-        acting_temperature = self.sp_config['FINAL_TEMPERATURE']  if ply >= self.sp_config['TRIGGER_PLY'] else self.sp_config['INITIAL_TEMPERATURE']
+        acting_temperature = (
+            self.sp_config["FINAL_TEMPERATURE"]
+            if ply >= self.sp_config["TRIGGER_PLY"]
+            else self.sp_config["INITIAL_TEMPERATURE"]
+        )
         # print(f"Temp for ply={ply} = {acting_temperature}")
-        
+
         max_prob = np.max(empirical_action_probs)
         temperature_based_units = np.power(
             empirical_action_probs / max_prob, 1 / acting_temperature
@@ -144,12 +149,12 @@ class SelfPlayAndTrainingOrchestrator:
         self.game_data_store = []
 
     def overallPipeline(self):
-        start_iteration = self.sp_config.get('START_FROM_ITERATION', 1)
+        start_iteration = self.sp_config.get("START_FROM_ITERATION", 1)
         end_iteration = self.sp_config["NUM_ITERATIONS"]
-        for iteration in range(start_iteration, end_iteration + 1 ):
+        for iteration in range(start_iteration, end_iteration + 1):
             if iteration == 1:
                 self.setUp()
-                
+
             self.performIteration(iteration=iteration)
             debugObj.updateIteration()
 
@@ -167,8 +172,6 @@ class SelfPlayAndTrainingOrchestrator:
     #     min_temp = self.sp_config["MIN_TEMPERATURE"]
     #     eff_iteration = iteration % self.sp_config["TEMPERATURE_RESET_ITERATION"]
 
-        
-
     #     return max(min_temp, np.power(temp_factor, eff_iteration - 1) * initial_temp)
 
     def getIterationSelfPlayConfig(self, iteration=0):
@@ -182,9 +185,9 @@ class SelfPlayAndTrainingOrchestrator:
             MODEL_CONFIG=model_config,
             SELF_PLAY_CONFIG=dict(
                 NUM_COLS=self.sp_config["NUM_COLS"],
-                INITIAL_TEMPERATURE=self.sp_config['INITIAL_TEMPERATURE'],
-                TRIGGER_PLY=self.sp_config['TRIGGER_PLY'],
-                FINAL_TEMPERATURE=self.sp_config['FINAL_TEMPERATURE'],
+                INITIAL_TEMPERATURE=self.sp_config["INITIAL_TEMPERATURE"],
+                TRIGGER_PLY=self.sp_config["TRIGGER_PLY"],
+                FINAL_TEMPERATURE=self.sp_config["FINAL_TEMPERATURE"],
             ),
         )
 
@@ -202,18 +205,25 @@ class SelfPlayAndTrainingOrchestrator:
         return self_play_config
 
     def selectRandomStates(self, game_states, num_samples):
-        sample = np.random.choice(len(game_states), size=min(num_samples, len(game_states)), replace=False)
+        sample = np.random.choice(
+            len(game_states), size=min(num_samples, len(game_states)), replace=False
+        )
 
         return list(game_states[ind] for ind in sample)
 
     def updateGameDataStore(self, cur_iter_game_data):
-        num_samples_per_game = self.sp_config.get('NUM_DATAPOINTS_PER_GAME', 5)
-        cur_iter_game_samples = [self.selectRandomStates(single_game_data, num_samples_per_game) for single_game_data in cur_iter_game_data]
+        num_samples_per_game = self.sp_config.get("NUM_DATAPOINTS_PER_GAME", 5)
+        cur_iter_game_samples = [
+            self.selectRandomStates(single_game_data, num_samples_per_game)
+            for single_game_data in cur_iter_game_data
+        ]
 
         self.game_data_store += cur_iter_game_samples
-        max_datapoints = self.sp_config['GAMES_PER_ITERATION'] * self.sp_config['NUM_LEGACY_ITERATIONS_DATA']
+        max_datapoints = (
+            self.sp_config["GAMES_PER_ITERATION"]
+            * self.sp_config["NUM_LEGACY_ITERATIONS_DATA"]
+        )
         self.game_data_store = self.game_data_store[-max_datapoints:]
-        
 
     def getIterationTrainingConfig(self, iteration=0, game_data=None):
         model_config = self.model_config.copy()
