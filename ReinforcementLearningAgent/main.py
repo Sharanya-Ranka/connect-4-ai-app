@@ -11,7 +11,6 @@ from GameImplementation import game_play
 from Agent.train_through_self_play import SelfPlayAndTrainingOrchestrator
 from Agent.deepnn_and_mcts_agent import DeepNNAndMCTSAgent
 from config import getSelfPlayFullConfig
-from Experiments import model_checks
 
 
 def cleanUp():
@@ -33,10 +32,6 @@ def runExperiment():
     # profiler.enable()
     spto.overallPipeline()
     # profiler.disable()
-
-
-def checkModel(model_weights_source):
-    model_checks.main(model_weights_source)
 
 
 if __name__ == "__main__":

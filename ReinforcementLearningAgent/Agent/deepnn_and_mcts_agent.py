@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from scipy.special import softmax
 
+
 from GameImplementation.game_state import MCTSGameState, GameState
 from Agent.policy_and_value_model import (
     PolicyAndValueTrainer,
@@ -33,6 +34,9 @@ class DeepNNAndMCTSAgent:
         self.policy_value_function = PolicyAndValueFunction(self.model_config)
         self.uct_c_coeff = self.agent_config["UCT_C_COEFF"]
 
+        # self.use_caching = self.agent_config['USE_CACHING']
+        self.state_cache = {}
+
     def getNetworkOnlyStateValueAndActionProbabilities(self, state):
         """
         Returns the state value and action probability estimates from the Neural Network only.
@@ -40,16 +44,60 @@ class DeepNNAndMCTSAgent:
         state_value, action_probabilities = self.policy_value_function.evaluateFunction(
             state
         )
+        return state_value, action_probabilities
 
-        # if debugObj.requireNetworkActualOp():
-        #     print(f"Network Only output")
-        #     print(
-        #         f"State:\n{state}\nState value={state_value}\nAction Probabilities={action_probabilities}\n",
-        #         flush=True,
-        #     )
+    def getNetworkOnlyStateValueAndActionProbabilitiesBatchedMode(self, states):
+        """
+        Returns the state value and action probability estimates from the Neural Network only.
+        """
+        state_value, action_probabilities = self.policy_value_function.evaluateFunction(
+            states
+        )
 
         return state_value, action_probabilities
 
+    def performMCTSBatchedMode(self, state: GameState):
+        to_evaluate_lazily = []
+        to_backprop_lazily = []
+
+        root_state = MCTSGameState.createMCTSState(state)
+        
+        if root_state.state in self.state_cache:
+            value, prior = self.state_cache[root_state.state]
+            root_state.prior = prior
+            root_state.v = value
+        else:
+            to_evaluate_lazily.append(root_state)
+        
+        num_playouts = self.agent_config["NUM_PLAYOUTS"]
+        for playout_ind in range(num_playouts):
+            # print(f"On playout {playout_ind}")
+            leaf_state = self._MCTSSelection(root_state)
+            
+            children = self._MCTSExpansionBatchedMode(leaf_state)
+
+            for child in children:
+                if child.state in self.state_cache:
+                    value, prior = self.state_cache[child.state]
+                    child.prior = prior
+                    child.v = value
+                else:
+                    to_evaluate_lazily.append(child)
+                    
+            if leaf_state in self.state_cache:
+                leaf_state_value = self.getStateValue(leaf_state)
+                # result = self._MCTSSimulation(leaf_state)
+                self._MCTSBackpropagation(leaf_state, leaf_state_value)
+            else:
+                self._registerVirtualLoss(leaf_state)
+                to_backprop_lazily.append(leaf_state)
+
+            self._checkLazyEvaluations(to_evaluate_lazily, to_backprop_lazily)
+            # debugObj.updateSim()
+
+    def _checkLazyEvaluations(self, to_evaluate_lazily, to_backprop_lazily):
+        if len(to_evaluate_lazily) >= self.agent_config['MIN_BATCH_SIZE']:
+            
     def getMCTSEmpiricalStateValueAndActionProbabilties(self, state, action_bias):
         """
         Returns the action probabilties estimates from the NN + MCTS system. MCTS uses action_bias (estimates from the NN only)
@@ -67,8 +115,9 @@ class DeepNNAndMCTSAgent:
             # print(f"On playout {playout_ind}")
             leaf_state = self._MCTSSelection(root_state)
             self._MCTSExpansion(leaf_state)
+            leaf_state_value = self.getStateValue(leaf_state)
             # result = self._MCTSSimulation(leaf_state)
-            self._MCTSBackpropagation(leaf_state, leaf_state.v)
+            self._MCTSBackpropagation(leaf_state, leaf_state_value)
             # debugObj.updateSim()
 
         # Calculate empirical probabilities using uct scores
@@ -76,7 +125,40 @@ class DeepNNAndMCTSAgent:
             root_state
         )
 
+        
+        # DEBUGGING
+        # child_visits = np.array(
+        #         [
+        #             child.visits if child != None else 0
+        #             for ind, child in enumerate(root_state.children)
+        #         ]
+        #     )
+
+        # child_qvals = np.array(
+        #         [
+        #             child.q if child != None else -np.inf
+        #             for ind, child in enumerate(root_state.children)
+        #         ]
+        #     )
+
+        # print(f"Visits={child_visits}")
+        # print(f"QVals={child_qvals}")
+        # print(f"Biased UCT={self.getBiasedUCTScore(root_state)}")
+
         return final_empirical_probabilities
+        
+    def getStateValue(self, state):
+        winner = state.getWinner()
+        state_value = 0
+        if winner == None:
+            state_value =  state.v
+        elif winner == GameState.RED or winner == GameState.YELLOW:
+            state_value =  -1 if state.next_player == winner else 1
+
+        # if state_value in [-1, 0, 1]:
+        #     print(f"State=\n{state.state}\nIsTerminal?={state.isTerminal()}\nStateValue={state_value}")
+
+        return state_value
 
     def convertVisitsToEmpiricalProbabilities(self, state):
         child_visits = np.array(
@@ -95,14 +177,7 @@ class DeepNNAndMCTSAgent:
 
         return empirical_probs
 
-    def _MCTSSelection(self, root_state: MCTSGameState) -> MCTSGameState:
-        """
-        Performs the selection step in MCTS.
-        Until you get to a leaf, choose an action based on its 'goodness' score
-        Goodness score depends on the NN bias, and outcomes from previous playouts with an 'uncertainty benefit of doubt'
-        """
-
-        def getBiasedUCTScore(state: MCTSGameState):
+    def getBiasedUCTScore(self, state: MCTSGameState):
             child_visits = np.array(
                 [
                     child.visits if child != None else 0
@@ -117,24 +192,44 @@ class DeepNNAndMCTSAgent:
             )
 
             uncertainty_based_prior = (
-                state.prior * np.sqrt(child_visits.sum()) / (1 + child_visits)
+                state.prior * np.sqrt(child_visits.sum()) / (0.01 + child_visits)
             )
             move_uct_scores = child_qvals + self.uct_c_coeff * uncertainty_based_prior
 
             return move_uct_scores
 
+    def _MCTSSelection(self, root_state: MCTSGameState) -> MCTSGameState:
+        """
+        Performs the selection step in MCTS.
+        Until you get to a leaf, choose an action based on its 'goodness' score
+        Goodness score depends on the NN bias, and outcomes from previous playouts with an 'uncertainty benefit of doubt'
+        """
         state = root_state
 
         while state.is_leaf != True and state.isTerminal() != True:
             # scores = getBiasedUCTScore(state) * (
             #     -1 if state.next_player == GameState.RED else 1
             # )
-            scores = getBiasedUCTScore(state)
+            scores = self.getBiasedUCTScore(state)
             best_action = np.argmax(np.array(scores, dtype=np.float32))
 
             state = state.children[best_action]
 
         return state
+
+    def _MCTSExpansionBatchedMode(self, state: MCTSGameState):
+        """
+        Performs the expansion step in MCTS.
+        We are at a leaf state, and need to add its children to the tree.
+        Children are initialized with the bias provided by the NN.
+        Note that in this game (s, a) implies a unique s' TODO complete
+        """
+        if state.isTerminal() == False:
+            children_created = state.createChildrenStates()
+            assert children_created == True
+            valid_children = [child for child in state.children if child is not None]
+
+        return valid_children
 
     def _MCTSExpansion(self, state: MCTSGameState):
         """
@@ -169,6 +264,32 @@ class DeepNNAndMCTSAgent:
 
     #     return temp_state.getWinner()
 
+    def _registerVirtualLoss(self, leaf_state):
+        state = leaf_state
+        while state != None:
+            state.visits += 1
+            # Modification from Backpropagation. All perspectives will register losses
+            state.w += -1
+            state.q = state.w / state.visits
+            state = state.parent
+
+    def _reverseVirtualLoss(self, leaf_state):
+        state = leaf_state
+        while state != None:
+            # Remove the added visit when we registered a Virtual Loss
+            state.visits -= 1
+            # Correct the Virtual loss
+            state.w += +1
+            state.q = state.w / state.visits
+            state = state.parent
+
+    # def _reverseVirtualLoss(self, leaf_state):
+        
+
+    def _MCTSBackpropagationMany(self, leaf_states, results):
+        for leaf_state, result in zip(leaf_states, results):
+            self._MCTSBackpropagation(leaf_state, result)
+
     def _MCTSBackpropagation(self, leaf_state: MCTSGameState, result: float):
         state = leaf_state
         while state != None:
@@ -180,10 +301,19 @@ class DeepNNAndMCTSAgent:
             state = state.parent
 
     def getActionWithInfo(self, state: GameState) -> dict:
-        """
-        Performs the backpropagation step in MCTS.
-        Goes up the current branch, updating every state in the tree based on the outcome
-        """
+        if self.agent_config['USE_BATCHED_INFERENCE'] == True:
+            return self.getActionWithInfoBatchedMode(state)
+        else:
+            return self.getActionWithInfoIndividualMode(state)
+            
+        return action_info
+
+    def getActionWithInfoBatchedMode(self, state: GameState) -> dict:
+        empirical_action_probs = self.performMCTSBatchedMode(state)
+        action_info = dict(empirical_action_probs=empirical_action_probs)
+        return action_info
+
+    def getActionWithInfoIndividualMode(self, state: GameState) -> dict:
         state_value, action_bias = self.getNetworkOnlyStateValueAndActionProbabilities(
             state
         )

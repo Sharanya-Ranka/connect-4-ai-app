@@ -8,12 +8,21 @@ from sklearn.model_selection import train_test_split
 
 from GameImplementation.game_state import GameState
 from Agent.policy_and_value_nn import ConvolutionalPAndVNetwork
-from config import UNIQUE_TOKENS, NUM_ROWS, NUM_COLS, debugObj
+from config import NUM_INITIAL_CHANNELS, NUM_ROWS, NUM_COLS, debugObj
 
 
 def createNewModel(config):
     model = ConvolutionalPAndVNetwork(config)
     model.eval()
+
+    if config.get("USE_GPU", False) == True and torch.cuda.is_available():
+        device = torch.device("cuda")
+        print("GPU is available. Using CUDA device.")
+    else:
+        device = torch.device("cpu")
+        print("GPU is not available. Using CPU device.")
+
+    model = model.to(device)
 
     return model
 
@@ -23,10 +32,20 @@ def loadModel(config):
     weights_source = config.get("MODEL_WEIGHTS_SOURCE", None)
     # print(f"Loading model from path={weights_source}")
 
+    if config.get("USE_GPU", False) == True and torch.cuda.is_available():
+        device = torch.device("cuda")
+        print("GPU is available. Using CUDA device.")
+    else:
+        device = torch.device("cpu")
+        print("GPU is not available. Using CPU device.")
+
     assert weights_source is not None
 
     model.load_state_dict(torch.load(weights_source, weights_only=True))
     model.eval()
+    model = model.to(device)
+    
+    
     return model
 
 
@@ -40,9 +59,11 @@ def saveModel(config):
 
 
 def preprocessState(state: GameState):
-    nn_state = np.zeros((UNIQUE_TOKENS, NUM_ROWS, NUM_COLS))
+    nn_state = np.zeros((NUM_INITIAL_CHANNELS, NUM_ROWS, NUM_COLS))
     row_inds, col_inds = np.indices((NUM_ROWS, NUM_COLS))
-    nn_state[state.state, row_inds, col_inds] = 1
+    nn_state[state.state + 1, row_inds, col_inds] = 1
+    nn_state[0] = -1 if state.next_player == GameState.RED else 1
+    # breakpoint()
     torch_state = torch.tensor(nn_state, dtype=torch.float32)
     # breakpoint()
     return torch_state
@@ -55,8 +76,31 @@ class PolicyAndValueFunction:
         self.cache = {}
         self.model_iter = 0
 
+        if config.get("USE_GPU", False) == True and torch.cuda.is_available():
+            device = torch.device("cuda")
+            print("GPU is available. Using CUDA device.")
+        else:
+            device = torch.device("cpu")
+        
+        self.device = device
+
     def updateModelIter(self):
         self.model_iter += 1
+
+    def _evaluateFunctionBatched(self, states):
+        processed_states = [preprocessState(state) for state in states]
+        # Add batch dimension
+        processed_states = torch.stack(processed_states, dim=0)
+        with torch.no_grad():
+            processed_states = processed_states.to(self.device)
+            state_value, action_logits = self.pv_network(processed_states)
+            action_probabilities = torch.softmax(action_logits, dim=-1)
+        # breakpoint()
+        # Remove batch dimension
+        state_value = state_value.cpu().numpy()
+        action_probabilities = action_probabilities.cpu().numpy()
+
+        return state_value, action_probabilities
 
     def evaluateFunction(self, state: GameState):
         if (self.model_iter, state) not in self.cache:
@@ -69,6 +113,7 @@ class PolicyAndValueFunction:
         # Add batch dimension
         processed_state = processed_state.unsqueeze(dim=0)
         with torch.no_grad():
+            processed_state = processed_state.to(self.device)
             state_value, action_logits = self.pv_network(processed_state)
             action_probabilities = torch.softmax(action_logits, dim=-1)
         # breakpoint()
@@ -76,7 +121,7 @@ class PolicyAndValueFunction:
         state_value = state_value.squeeze(dim=0)
         action_probabilities = action_probabilities.squeeze(dim=0)
 
-        return state_value.numpy(), action_probabilities.numpy()
+        return state_value.cpu().numpy(), action_probabilities.cpu().numpy()
 
     def _getPolicyAndValueNetwork(self):
         return loadModel(self.config)
@@ -124,6 +169,14 @@ class PolicyAndValueTrainer:
 
         self.debug_mse_loss_criterion = torch.nn.MSELoss(reduction="none")
         self.debug_ce_loss_criterion = torch.nn.CrossEntropyLoss(reduction="none")
+
+        if config.get("USE_GPU", False) == True and torch.cuda.is_available():
+            device = torch.device("cuda")
+            print("GPU is available. Using CUDA device.")
+        else:
+            device = torch.device("cpu")
+        
+        self.device = device
 
     def runTrainPipeline(self, model, data):
         print(f"Beginning training\nNumber of datapoints={len(data)}")
@@ -203,7 +256,7 @@ class PolicyAndValueTrainer:
         )
         
         for epoch in range(self.tr_config["EPOCHS"]):
-            # print(f"Epoch: {epoch}")
+            print(f"Epoch: {epoch}")
 
             
             train_mse_loss, train_ce_loss = self.trainEpoch()
@@ -215,6 +268,10 @@ class PolicyAndValueTrainer:
             eval_ce_losses.append(eval_ce_loss)
 
             # debugObj.updateEpoch()
+
+            print(
+            f"Train mse loss={train_mse_loss:.5f} Train ce loss={train_ce_loss:.5f} Eval mse loss={eval_mse_loss:.5f} Eval ce loss={eval_ce_loss:.5f}"
+        )
 
 
         print(
@@ -233,6 +290,10 @@ class PolicyAndValueTrainer:
 
         # debugObj.updateBatch(setZero=True)
         for state, target_state_val, target_policy in self.train_dataloader:
+            state = state.to(self.device)
+            target_state_val = target_state_val.to(self.device)
+            target_policy = target_policy.to(self.device)
+            
             pred_state_val, pred_policy = self.model(state)
             mse_loss, ce_loss = self._calculateDebugLoss(
                 (target_state_val, target_policy), (pred_state_val, pred_policy)
@@ -264,6 +325,10 @@ class PolicyAndValueTrainer:
         self.model.eval()
 
         for state, target_state_val, target_policy in dataloader:
+            state = state.to(self.device)
+            target_state_val = target_state_val.to(self.device)
+            target_policy = target_policy.to(self.device)
+            
             pred_state_val, pred_policy = self.model(state)
             mse_loss, ce_loss = self._calculateDebugLoss(
                 (target_state_val, target_policy), (pred_state_val, pred_policy)

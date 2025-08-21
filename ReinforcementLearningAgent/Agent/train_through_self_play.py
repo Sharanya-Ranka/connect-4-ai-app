@@ -2,7 +2,8 @@ import torch
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import reduce
-
+import cProfile
+import pstats  # To process and display the results
 
 
 import numpy as np
@@ -30,24 +31,39 @@ class SelfPlayOrchestrator:
         # print(f"Started pipeline")
         all_games_data = []
         for game_num in range(self.sp_config["NUM_GAMES"]):
+            
             all_games_data.append(self.playAGame())
             # print(f"Completed game {game_num}")
+            # profiler = cProfile.Profile()
+            # profiler.enable()
+            # all_games_data.append(self.playAGame())
+            # profiler.disable()
+            # print(f"Completed game {game_num}")
+            # # Print the statistics
+            # stats = pstats.Stats(profiler).sort_stats("tottime")  # Sort by cumulative time
+            # stats.print_stats(50)  # Print top 50 functions
+
 
         return all_games_data
 
     def playAGame(self):
         state = GameState()
         current_game_data = []
+        current_ply = 0
         while not state.isTerminal():
-            # print(f"Next state")
+            # print(f"This state=\n{state}")
             action_info = self.agent.getActionWithInfo(state)
             # print(f"Got action info")
             current_game_data.append([state, -1, action_info["empirical_action_probs"]])
 
             action = self.chooseTemperatureBasedAction(
-                action_info["empirical_action_probs"]
+                action_info["empirical_action_probs"], ply=current_ply
             )
             state = state.applyMove(action)
+            current_ply += 1
+
+        # current_game_data.append([state, -1, action_info["empirical_action_probs"]])
+        # breakpoint()
 
         for i in range(len(current_game_data)):
             inter_state = current_game_data[i][0]
@@ -67,12 +83,15 @@ class SelfPlayOrchestrator:
 
         return current_game_data
 
-    def chooseTemperatureBasedAction(self, empirical_action_probs):
+    def chooseTemperatureBasedAction(self, empirical_action_probs, ply=0):
         # Empirical action probs are of the form N_i/sum_j N_j
         # Temperature based is N_i^(1/t) / sum_j N_j^(1/t)
+        acting_temperature = self.sp_config['FINAL_TEMPERATURE']  if ply >= self.sp_config['TRIGGER_PLY'] else self.sp_config['INITIAL_TEMPERATURE']
+        # print(f"Temp for ply={ply} = {acting_temperature}")
+        
         max_prob = np.max(empirical_action_probs)
         temperature_based_units = np.power(
-            empirical_action_probs / max_prob, 1 / self.sp_config["CURRENT_TEMPERATURE"]
+            empirical_action_probs / max_prob, 1 / acting_temperature
         )
         temperature_based_probs = temperature_based_units / np.sum(
             temperature_based_units
@@ -142,15 +161,15 @@ class SelfPlayAndTrainingOrchestrator:
     def getModelPathForIteration(self, iteration=0):
         return os.path.join(self.tr_config["BASE_PATH"], f"iteration_{iteration}.pth")
 
-    def getTemperatureForIteration(self, iteration=0):
-        initial_temp = self.sp_config["INITIAL_TEMPERATURE"]
-        temp_factor = self.sp_config["TEMPERATURE_DELTA_FACTOR"]
-        min_temp = self.sp_config["MIN_TEMPERATURE"]
-        eff_iteration = iteration % self.sp_config["TEMPERATURE_RESET_ITERATION"]
+    # def getTemperatureForIteration(self, iteration=0):
+    #     initial_temp = self.sp_config["INITIAL_TEMPERATURE"]
+    #     temp_factor = self.sp_config["TEMPERATURE_DELTA_FACTOR"]
+    #     min_temp = self.sp_config["MIN_TEMPERATURE"]
+    #     eff_iteration = iteration % self.sp_config["TEMPERATURE_RESET_ITERATION"]
 
         
 
-        return max(min_temp, np.power(temp_factor, eff_iteration - 1) * initial_temp)
+    #     return max(min_temp, np.power(temp_factor, eff_iteration - 1) * initial_temp)
 
     def getIterationSelfPlayConfig(self, iteration=0):
         model_config = self.model_config.copy()
@@ -158,15 +177,14 @@ class SelfPlayAndTrainingOrchestrator:
             iteration - 1
         )
 
-        current_temperature = self.getTemperatureForIteration(iteration=iteration)
-        print(f"Temperature for iteration {iteration} is {current_temperature:.4f}")
-
         self_play_config = dict(
             AGENT_CONFIG=self.agent_config,
             MODEL_CONFIG=model_config,
             SELF_PLAY_CONFIG=dict(
                 NUM_COLS=self.sp_config["NUM_COLS"],
-                CURRENT_TEMPERATURE=current_temperature,
+                INITIAL_TEMPERATURE=self.sp_config['INITIAL_TEMPERATURE'],
+                TRIGGER_PLY=self.sp_config['TRIGGER_PLY'],
+                FINAL_TEMPERATURE=self.sp_config['FINAL_TEMPERATURE'],
             ),
         )
 
@@ -184,7 +202,7 @@ class SelfPlayAndTrainingOrchestrator:
         return self_play_config
 
     def selectRandomStates(self, game_states, num_samples):
-        sample = np.random.choice(len(game_states), size=num_samples, replace=False)
+        sample = np.random.choice(len(game_states), size=min(num_samples, len(game_states)), replace=False)
 
         return list(game_states[ind] for ind in sample)
 

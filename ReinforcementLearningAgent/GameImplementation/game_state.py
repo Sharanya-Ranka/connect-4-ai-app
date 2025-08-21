@@ -328,7 +328,7 @@ class MCTSGameState:
         self.visits = 0  # Visits to this state
 
         self.prior = np.array(
-            [0] * num_moves, dtype=np.float32
+            [1/num_moves] * num_moves, dtype=np.float32
         )  # Prior (action probabilities for children)
 
         self.is_leaf = True
@@ -345,6 +345,9 @@ class MCTSGameState:
 
     def isTerminal(self):
         return self.state.isTerminal()
+
+    def getWinner(self):
+        return self.state.getWinner()
 
     def createChildrenStates(self) -> bool:
         if self.state.isTerminal() == True:

@@ -55,8 +55,8 @@ class ConvolutionalPAndVNetwork(nn.Module):
 
         num_rows = config["NUM_ROWS"]
         num_cols = config["NUM_COLS"]
-        unique_tokens = config[
-            "UNIQUE_TOKENS"
+        initial_channels = config[
+            "NUM_INITIAL_CHANNELS"
         ]  # Number of channels (e.g., 3 for player1, player2, empty)
         num_filters = config["NUM_CNN_FILTERS"]
         kernel_size = config["KERNEL_SIZE"]
@@ -72,7 +72,7 @@ class ConvolutionalPAndVNetwork(nn.Module):
         # This layer processes the raw board state (unique_tokens channels)
         # into a higher-dimensional feature map (num_filters).
         self.initial_conv = nn.Conv2d(
-            unique_tokens, num_filters, kernel_size=kernel_size, padding=padding
+            initial_channels, num_filters, kernel_size=kernel_size, padding=padding
         )
         self.initial_bn = nn.BatchNorm2d(num_filters)
 
@@ -127,7 +127,7 @@ class ConvolutionalPAndVNetwork(nn.Module):
         # batch_size = inp.shape[0]
         num_rows = self.config["NUM_ROWS"]
         num_cols = self.config["NUM_COLS"]
-        unique_tokens = self.config["UNIQUE_TOKENS"]
+        initial_channels = self.config["NUM_INITIAL_CHANNELS"]
 
         # Reshape input to (batch_size, channels, height, width)
         # Make sure the order of dimensions is correct: unique_tokens as channels
