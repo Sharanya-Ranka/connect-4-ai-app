@@ -4,9 +4,9 @@ import "./App.css";
 import { Analytics } from "@vercel/analytics/react";
 
 import { BrowserRouter, Route, Routes, Link } from "react-router-dom";
-import Game from "./components/Game/Game";
-import BlogMain from "./components/Blog/BlogMain";
-import Navbar from "./components/Navbar/Navbar";
+import Game from "./components/Game/Game.jsx";
+import BlogMain from "./components/Blog/BlogMain.jsx";
+import Navbar from "./components/Navbar/Navbar.jsx";
 
 function App() {
   return (

@@ -1,4 +1,4 @@
-import TreeVisualizerNode from "./TreeVisualizerNode";
+import TreeVisualizerNode from "./TreeVisualizerNode.jsx";
 import React from "react";
 import "../../styles/TreeVisualizerStyles/TreeVisualizer.css";
 

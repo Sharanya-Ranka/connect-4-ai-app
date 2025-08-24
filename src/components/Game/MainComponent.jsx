@@ -1,7 +1,7 @@
-import GameCreator from "../GameBoard/GameCreator";
-import GameConfigForm from "../GameConfigForm/GameConfigForm";
-import { MCTSWithUCTPlayer } from "../../scripts/Player";
-import { GameState } from "../../scripts/GameState";
+import GameCreator from "../GameBoard/GameCreator.jsx";
+import GameConfigForm from "../GameConfigForm/GameConfigForm.jsx";
+import { MCTSWithUCTPlayer } from "../../scripts/Player.js";
+import { GameState } from "../../scripts/GameState.js";
 
 import {
   MCTS_UCT_PLAYER,
@@ -11,9 +11,9 @@ import {
 } from "../../scripts/constants";
 
 import React from "react";
-import GameBoard from "../GameBoard/GameBoard";
-import GamePlayersControl from "../GamePlayersControl/GamePlayersControl";
-import WinChance from "../GameBoard/WinChance";
+import GameBoard from "../GameBoard/GameBoard.jsx";
+import GamePlayersControl from "../GamePlayersControl/GamePlayersControl.jsx";
+import WinChance from "../GameBoard/WinChance.jsx";
 import "../../styles/MainComponent.css";
 
 // import useSe

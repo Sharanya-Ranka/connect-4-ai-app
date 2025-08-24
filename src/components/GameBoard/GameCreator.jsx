@@ -1,6 +1,6 @@
 import GameBoard from "./GameBoard";
-import { GameState } from "../../scripts/GameState";
-import { Tree } from "../../scripts/GameTree";
+import { GameState } from "../../scripts/GameState.js";
+import { Tree } from "../../scripts/GameTree.js";
 
 import {
   HumanPlayer,
@@ -8,7 +8,7 @@ import {
   RandomValidMovePlayer,
 } from "../../scripts/Player";
 import React from "react";
-import TreeVisualizer from "../TreeVisualization/TreeVisualizer";
+import TreeVisualizer from "../TreeVisualization/TreeVisualizer.jsx";
 
 export default function GameCreator({
   game_config,
