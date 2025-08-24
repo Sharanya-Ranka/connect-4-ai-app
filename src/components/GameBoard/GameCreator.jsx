@@ -1,4 +1,4 @@
-import GameBoard from "./GameBoard";
+import GameBoard from "./GameBoard.jsx";
 import { GameState } from "../../scripts/GameState.js";
 import { Tree } from "../../scripts/GameTree.js";
 
