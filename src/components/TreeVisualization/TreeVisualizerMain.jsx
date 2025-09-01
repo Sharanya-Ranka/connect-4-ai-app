@@ -1,5 +1,5 @@
-import { Tree, getGameTreeData } from "../../scripts/GameTree";
-import TreeVisualizer from "./TreeVisualizer";
+import { Tree, getGameTreeData } from "../../scripts/GameTree.js";
+import TreeVisualizer from "./TreeVisualizer.jsx";
 
 export default function TreeVisualizerMain() {
   const game_tree_data = getGameTreeData(5, 7);

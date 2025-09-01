@@ -1,5 +1,5 @@
 import "../../styles/GameConfigFormStyles/GameConfigForm.css";
-import { GameState } from "../../scripts/GameState";
+import { GameState } from "../../scripts/GameState.js";
 import {
   MCTS_UCT_PLAYER,
   MCTS_UCT_PLAYER_TEXTDISPLAY,
@@ -13,13 +13,13 @@ import {
   DEFAULT_PLAYER_CONFIGS,
   MIN_ROWS,
   MIN_COLUMNS,
-} from "../../scripts/constants";
+} from "../../scripts/constants.js";
 import React from "react";
 import {
   HumanPlayer,
   MCTSWithUCTPlayer,
   MCTSWithUCTMonitorPlayer,
-} from "../../scripts/Player";
+} from "../../scripts/Player.js";
 
 export default function GameConfigForm({
   game_config,
@@ -194,14 +194,14 @@ export default function GameConfigForm({
 
   return (
     <div className="game-config-form">
-      <div class="form-section">
-        <div class="section-title">
+      <div className="form-section">
+        <div className="section-title">
           <b>Game Board</b>
         </div>
         <div className="form-group">
           <div className="game-config-rows">
             {/* Num rows*/}
-            <label for="num_rows">Rows</label>
+            <label htmlFor="num_rows">Rows</label>
             <select
               id="num_rows"
               name="num_rows"
@@ -213,7 +213,7 @@ export default function GameConfigForm({
             </select>
           </div>
           <div className="game-config-columns">
-            <label for="num_cols">Columns</label>
+            <label htmlFor="num_cols">Columns</label>
             <select
               id="num_cols"
               name="num_cols"
@@ -228,21 +228,21 @@ export default function GameConfigForm({
         <hr />
       </div>
 
-      <div class="form-section">
-        <div class="section-title">
+      <div className="form-section">
+        <div className="section-title">
           <b>Players</b>
         </div>
         <div className="form-group">
           {/* Player types */}
           <div className="game-config-player1">
             <div className="player-and-token">
-              <label for="player1" id="player1-label">
+              <label htmlFor="player1" id="player1-label">
                 Player 1
               </label>
               <div className="token"></div>
             </div>
             {/* <br /> */}
-            {/* <label for="player1">Player 1: Type</label> */}
+            {/* <label htmlFor="player1">Player 1: Type</label> */}
             <select
               id="player1"
               name="type"
@@ -254,7 +254,7 @@ export default function GameConfigForm({
             </select>
             {game_config.player1.type === MCTS_UCT_PLAYER ? (
               <>
-                <label className="strength-label" for="player1_strength">
+                <label className="strength-label" htmlFor="player1_strength">
                   Strength
                 </label>
                 <select
@@ -273,13 +273,13 @@ export default function GameConfigForm({
           </div>
           <div className="game-config-player2">
             <div className="player-and-token">
-              <label for="player2" id="player2-label">
+              <label htmlFor="player2" id="player2-label">
                 Player 2
               </label>
               <div className="token"></div>
             </div>
             {/* <br /> */}
-            {/* <label for="player2">Player 2</label> */}
+            {/* <label htmlFor="player2">Player 2</label> */}
             <select
               id="player2"
               name="type"
@@ -291,7 +291,7 @@ export default function GameConfigForm({
             </select>
             {game_config.player2.type === MCTS_UCT_PLAYER ? (
               <>
-                <label className="strength-label" for="player2_strength">
+                <label className="strength-label" htmlFor="player2_strength">
                   Strength
                 </label>
                 <select
@@ -311,20 +311,20 @@ export default function GameConfigForm({
         </div>
         <div className="form-group">
           <div className="game-config-monitor">
-            <label for="player1">Win Chance Calculation</label>
+            <label htmlFor="player1">Win Chance Calculation</label>
             {/* <br /> */}
-            {/* <label for="player2">Player 2</label> */}
+            {/* <label htmlFor="player2">Player 2</label> */}
             <select
               id="monitor"
               name="type"
-              // onChange={(event) => handlePlayerChange(2, event)}
+              onChange={(event) => {}} //(event) => handlePlayerChange(2, event)}
               value={game_config.monitor.type}
               disabled={game_state.is_game_active}
             >
               {monitor_option}
             </select>
             <>
-              <label className="strength-label" for="monitor_strength">
+              <label className="strength-label" htmlFor="monitor_strength">
                 Strength
               </label>
               <select

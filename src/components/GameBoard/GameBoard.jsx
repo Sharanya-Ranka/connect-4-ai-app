@@ -1,6 +1,6 @@
-import GameBoardTile from "./GameBoardTile";
+import GameBoardTile from "./GameBoardTile.jsx";
 import "../../styles/GameBoardStyles/GameBoard.css";
-import { getGameStateObjectFromGameStateDescription } from "../../scripts/utilities";
+import { getGameStateObjectFromGameStateDescription } from "../../scripts/utilities.js";
 
 export default function GameBoard({ game_state, setGameState }) {
   // console.log("GameBoard: GameState", game_state);

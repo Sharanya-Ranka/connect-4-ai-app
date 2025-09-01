@@ -1,5 +1,5 @@
-import GameBoard from "./GameBoard";
-import { HumanPlayer, RandomValidMovePlayer } from "../../scripts/Player";
+import GameBoard from "./GameBoard.jsx";
+import { HumanPlayer, RandomValidMovePlayer } from "../../scripts/Player.js";
 
 export default function GameBoardMain() {
   let game_board_state = Array.from({ length: 6 }).map((el, ind) =>
