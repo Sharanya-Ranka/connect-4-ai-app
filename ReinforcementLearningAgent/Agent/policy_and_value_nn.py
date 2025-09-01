@@ -175,6 +175,129 @@ class ConvolutionalPAndVNetwork(nn.Module):
         return value_op, policy_op
 
 
+
+class Convolutional4PAndVNetwork(nn.Module):
+    """
+    A Convolutional Neural Network (CNN) based Policy and Value network
+    for Connect4, inspired by AlphaZero.
+    It takes the board state as input and outputs a policy (move probabilities)
+    and a value (game outcome prediction).
+    """
+
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+
+        num_rows = config["NUM_ROWS"]
+        num_cols = config["NUM_COLS"]
+        initial_channels = config[
+            "NUM_INITIAL_CHANNELS"
+        ]  # Number of channels (e.g., 3 for player1, player2, empty)
+        num_filters = config["NUM_CNN_FILTERS"]
+        kernel_size = config["KERNEL_SIZE"]
+        dropout_rate = config["DROPOUT_RATE"]
+        policy_head_filters = config["POLICY_HEAD_FILTERS"]
+        value_head_filters = config["VALUE_HEAD_FILTERS"]
+        flattened_size = (num_rows - kernel_size + 1) * (num_cols - kernel_size + 1)
+
+        # --- Initial Convolutional Block ---
+        # This layer processes the raw board state (unique_tokens channels)
+        # into a higher-dimensional feature map (num_filters).
+        self.initial_conv = nn.Conv2d(
+            initial_channels, num_filters, kernel_size=kernel_size, padding=0
+        )
+        self.initial_bn = nn.BatchNorm2d(num_filters)
+
+        padding_maintain_shape = kernel_size // 2
+        self.conv2 = nn.Conv2d(
+            num_filters, num_filters, kernel_size=3, padding='same'
+        )
+        self.bn2 = nn.BatchNorm2d(num_filters)
+
+        # --- Policy Head ---
+        # Predicts the probability distribution over possible moves (columns).
+        # It typically has fewer filters and then a final linear layer.
+        self.policy_conv = nn.Conv2d(
+            2 * num_filters, policy_head_filters, kernel_size=1
+        )  # 1x1 conv to reduce channels
+        self.policy_bn = nn.BatchNorm2d(policy_head_filters)
+
+        policy_head_flattened_size = flattened_size * policy_head_filters
+        
+        # Linear layer to output logits for each column (action)
+        self.policy_fc1 = nn.Linear(policy_head_flattened_size, policy_head_flattened_size//2)
+        self.policy_fc2 = nn.Linear(policy_head_flattened_size//2, num_cols)
+        self.policy_dropout = nn.Dropout(dropout_rate)
+
+        # --- Value Head ---
+        # Predicts the scalar value of the board state (e.g., win/loss/draw).
+        # Similar structure to the policy head but outputs a single value.
+        self.value_conv = nn.Conv2d(
+            2 * num_filters, value_head_filters, kernel_size=1
+        )  # 1x1 conv to reduce channels
+        self.value_bn = nn.BatchNorm2d(value_head_filters)
+
+        value_head_flattened_size = flattened_size * value_head_filters
+        # Linear layer to output a single value
+        self.value_fc1 = nn.Linear(
+            value_head_flattened_size, value_head_flattened_size // 2
+        )  # Intermediate linear layer
+        self.value_fc2 = nn.Linear(
+            value_head_flattened_size // 2, 1
+        )  # Final linear layer for scalar output
+        self.value_dropout = nn.Dropout(dropout_rate)
+
+    def forwardInference(self, inp):
+        return self.forward(inp)
+
+    def forward(self, inp):
+        # The input `inp` is expected to be flattened, so we need to reshape it
+        # from (batch_size, NUM_ROWS * NUM_COLS * UNIQUE_TOKENS)
+        # to (batch_size, UNIQUE_TOKENS, NUM_ROWS, NUM_COLS)
+        # batch_size = inp.shape[0]
+        num_rows = self.config["NUM_ROWS"]
+        num_cols = self.config["NUM_COLS"]
+        initial_channels = self.config["NUM_INITIAL_CHANNELS"]
+
+        # Reshape input to (batch_size, channels, height, width)
+        # Make sure the order of dimensions is correct: unique_tokens as channels
+        # breakpoint()
+        # x = inp.view(batch_size, unique_tokens, num_rows, num_cols)
+
+        # Initial convolutional block
+        x = F.relu(self.initial_bn(self.initial_conv(inp)))
+        x1 = F.relu(self.bn2(self.conv2(x)))
+
+        x = torch.cat((x, x1), dim=1)
+
+        # --- Policy Head Forward Pass ---
+        # Apply 1x1 convolution, batch norm, and ReLU
+        policy_x = F.relu(self.policy_bn(self.policy_conv(x)))
+        policy_x = torch.flatten(policy_x, 1)
+        # Apply dropout
+        policy_x = self.policy_dropout(policy_x)
+        # Final linear layer for policy logits
+        policy_x = F.relu(self.policy_fc1(policy_x))
+        policy_op =   self.policy_fc2(policy_x) # Output logits
+
+        # --- Value Head Forward Pass ---
+        # Apply 1x1 convolution, batch norm, and ReLU
+        value_x = F.relu(self.value_bn(self.value_conv(x)))
+        value_x = torch.flatten(value_x, 1)
+        # Apply dropout
+        value_x = self.value_dropout(value_x)
+        # Intermediate linear layer with ReLU
+        value_x = F.relu(self.value_fc1(value_x))
+        # Final linear layer for value output
+        value_lin_op = self.value_fc2(value_x)
+
+        # Compress value to between -1 and +1 using tanh
+        # Squeeze to remove the last dimension (from (batch_size, 1) to (batch_size,))
+        value_op = torch.tanh(value_lin_op).squeeze(-1)
+
+        return value_op, policy_op
+
+
 class SimplePAndVNetwork(torch.nn.Module):
     def __init__(self, config):
         super().__init__()

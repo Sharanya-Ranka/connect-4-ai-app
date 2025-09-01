@@ -2,10 +2,13 @@ import cProfile
 import pstats  # To process and display the results
 import time
 import os
+import torch.multiprocessing as mp
 
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
+
+mp.set_start_method("spawn", force=True)
 
 from GameImplementation import game_play
 from Agent.train_through_self_play import SelfPlayAndTrainingOrchestrator

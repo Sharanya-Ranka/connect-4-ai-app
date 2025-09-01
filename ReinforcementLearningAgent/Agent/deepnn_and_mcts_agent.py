@@ -132,7 +132,7 @@ class DeepNNAndMCTSAgent:
             ):
                 mcts_state: MCTSGameState
                 mcts_state.prior = ap
-                mcts_state.v = 0  # sv
+                mcts_state.v =  sv
 
                 self.state_cache[mcts_state.state] = (sv, ap)
 

@@ -26,6 +26,8 @@ class SelfPlayOrchestrator:
     def initializeAgent(self):
         # Config should consist of atleast the model config and the agent config
         self.agent = DeepNNAndMCTSAgent(self.config)
+        seed = os.getpid()
+        np.random.seed(seed)
 
     def selfPlayPipeline(self):
         # print(f"Started pipeline")
@@ -33,8 +35,10 @@ class SelfPlayOrchestrator:
         for game_num in range(self.sp_config["NUM_GAMES"]):
 
             all_games_data.append(self.playAGame())
-            print(f"Completed game {game_num}")
-            print(f"Agent cache size={len(self.agent.state_cache)}")
+            if game_num % 10 == 0:
+                print(f"Completed game {game_num}")
+                print(f"Agent cache size={len(self.agent.state_cache)}")
+            # print(f"{all_games_data[-1][-1][0]}")
             # breakpoint()
             # profiler = cProfile.Profile()
             # profiler.enable()
@@ -55,7 +59,7 @@ class SelfPlayOrchestrator:
             # print(f"This state=\n{state}")
             action_info = self.agent.getActionWithInfo(state)
             # print(f"Got action info")
-            current_game_data.append([state, -1, action_info["empirical_action_probs"]])
+            current_game_data.append([state, 1, action_info["empirical_action_probs"]])
 
             action = self.chooseTemperatureBasedAction(
                 action_info["empirical_action_probs"], ply=current_ply
@@ -66,6 +70,8 @@ class SelfPlayOrchestrator:
         # current_game_data.append([state, -1, action_info["empirical_action_probs"]])
         # breakpoint()
 
+        gamma = 0.95
+
         for i in range(len(current_game_data)):
             inter_state = current_game_data[i][0]
 
@@ -73,7 +79,7 @@ class SelfPlayOrchestrator:
                 0
                 if state.getWinner() == GameState.NOONE
                 else -1 if inter_state.next_player == state.getWinner() else 1
-            )
+            ) * np.power(gamma, len(current_game_data) - (i+1))
 
             current_game_data[i][1] = state_value
 

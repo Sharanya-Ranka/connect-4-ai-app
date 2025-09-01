@@ -7,12 +7,12 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 
 from GameImplementation.game_state import GameState
-from Agent.policy_and_value_nn import ConvolutionalPAndVNetwork
+from Agent.policy_and_value_nn import ConvolutionalPAndVNetwork, Convolutional4PAndVNetwork
 from config import NUM_INITIAL_CHANNELS, NUM_ROWS, NUM_COLS, debugObj
 
 
 def createNewModel(config):
-    model = ConvolutionalPAndVNetwork(config)
+    model = Convolutional4PAndVNetwork(config)
     model.eval()
 
     if config.get("USE_GPU", False) == True and torch.cuda.is_available():
@@ -28,7 +28,7 @@ def createNewModel(config):
 
 
 def loadModel(config):
-    model = ConvolutionalPAndVNetwork(config)
+    model = Convolutional4PAndVNetwork(config)
     weights_source = config.get("MODEL_WEIGHTS_SOURCE", None)
     # print(f"Loading model from path={weights_source}")
 
@@ -49,7 +49,7 @@ def loadModel(config):
 
 
 def saveModel(config):
-    model = config["MODEL"]
+    model = config["MODEL"].to(torch.device('cpu'))
     save_path = config["SAVE_PATH"]
     save_dir = os.path.dirname(save_path)
     os.makedirs(save_dir, exist_ok=True)
@@ -60,8 +60,9 @@ def saveModel(config):
 def preprocessState(state: GameState):
     nn_state = np.zeros((NUM_INITIAL_CHANNELS, NUM_ROWS, NUM_COLS))
     row_inds, col_inds = np.indices((NUM_ROWS, NUM_COLS))
-    nn_state[state.state + 1, row_inds, col_inds] = 1
-    nn_state[0] = -1 if state.next_player == GameState.RED else 1
+    nn_state[state.state + 2, row_inds, col_inds] = 1
+    nn_state[0] = 1 if state.next_player == GameState.RED else 0
+    nn_state[1] = 1 if state.next_player == GameState.YELLOW else 0
     # breakpoint()
     torch_state = torch.tensor(nn_state, dtype=torch.float32)
     # breakpoint()
@@ -140,12 +141,18 @@ class SelfPlayDataset(Dataset):
     def __getitem__(self, index):
         state_t, state_val_t, action_probs_t = self.processed_data[index]
         # breakpoint()
+        index_t = torch.tensor(index, dtype=torch.int32)
 
-        return state_t, state_val_t, action_probs_t
+        return index_t, state_t, state_val_t, action_probs_t
+
+    def getOriginalItem(self, index):
+        state, state_val, action_probs = self.raw_data[index]
+        
+        return state, state_val, action_probs
 
     def _processDataset(self, raw_dataset):
         processed_dataset = []
-        for state, state_val, action_probs in raw_dataset:
+        for i, (state, state_val, action_probs) in enumerate(raw_dataset):
             # state_t = torch.tensor(state, dtype=torch.float32)
             state_val_t = torch.tensor(state_val, dtype=torch.float32)
             action_probs_t = torch.tensor(action_probs, dtype=torch.float32)
@@ -166,11 +173,12 @@ class PolicyAndValueTrainer:
 
         self.mse_loss_criterion = torch.nn.MSELoss()
         self.ce_loss_criterion = torch.nn.CrossEntropyLoss()
+        self.kl_div_criterion = torch.nn.KLDivLoss()
 
         self.debug_mse_loss_criterion = torch.nn.MSELoss(reduction="none")
         self.debug_ce_loss_criterion = torch.nn.CrossEntropyLoss(reduction="none")
 
-        if config.get("USE_GPU", False) == True and torch.cuda.is_available():
+        if self.tr_config.get("USE_GPU", False) == True and torch.cuda.is_available():
             device = torch.device("cuda")
             print("GPU is available. Using CUDA device.")
         else:
@@ -209,23 +217,26 @@ class PolicyAndValueTrainer:
         )
 
     def setUpModel(self, model):
+        model = model.to(self.device)
         self.model = model
         self.optimizer = torch.optim.Adam(
             model.parameters(), lr=self.tr_config["LEARNING_RATE"]
         )
 
-    def _calculateLoss(self, true, pred):
-        mse_loss = self.mse_loss_criterion(pred[0], true[0])
-        ce_loss = self.ce_loss_criterion(pred[1], true[1])
+    def _calculateLossIndividual(self, true, pred):
+        mse_loss = self.debug_mse_loss_criterion(pred[0], true[0])
+        ce_loss = self.debug_ce_loss_criterion(pred[1], true[1])
         total_loss = mse_loss + ce_loss
         # total_loss = mse_loss
         # breakpoint()
-        return total_loss
+        return mse_loss, ce_loss
 
     def _calculateDebugLoss(self, true, pred):
         mse_loss = self.mse_loss_criterion(pred[0], true[0])
+        # kl_loss = self.kl_div_criterion(torch.log_softmax(pred[1], dim=-1), torch.softmax(true[1], dim=-1))
+        # best_moves = torch.argmax(true[1], dim=1)
         ce_loss = self.ce_loss_criterion(pred[1], true[1])
-        total_loss = mse_loss + ce_loss
+        total_loss = mse_loss + ce_loss #kl_loss
         # total_loss = mse_loss
 
         # if (
@@ -275,6 +286,7 @@ class PolicyAndValueTrainer:
         print(
             f"Train mse loss={train_mse_losses[-1]:.5f} Train ce loss={train_ce_losses[-1]:.5f} Eval mse loss={eval_mse_losses[-1]:.5f} Eval ce loss={eval_ce_losses[-1]:.5f}"
         )
+        self.analyzeExamples(self.test_dataloader)
 
         # breakpoint()
 
@@ -287,7 +299,7 @@ class PolicyAndValueTrainer:
         self.model.train()
 
         # debugObj.updateBatch(setZero=True)
-        for state, target_state_val, target_policy in self.train_dataloader:
+        for i, state, target_state_val, target_policy in self.train_dataloader:
             state = state.to(self.device)
             target_state_val = target_state_val.to(self.device)
             target_policy = target_policy.to(self.device)
@@ -322,7 +334,7 @@ class PolicyAndValueTrainer:
 
         self.model.eval()
 
-        for state, target_state_val, target_policy in dataloader:
+        for i, state, target_state_val, target_policy in dataloader:
             state = state.to(self.device)
             target_state_val = target_state_val.to(self.device)
             target_policy = target_policy.to(self.device)
@@ -340,3 +352,53 @@ class PolicyAndValueTrainer:
         return float(batches_mse_loss / num_batches), float(
             batches_ce_loss / num_batches
         )
+
+    def analyzeExamples(self, dataloader):
+        losses = []
+
+        self.model.eval()
+
+        for i, state, target_state_val, target_policy in dataloader:
+            state = state.to(self.device)
+            target_state_val = target_state_val.to(self.device)
+            target_policy = target_policy.to(self.device)
+
+            pred_state_val, pred_policy = self.model(state)
+            mse_loss, ce_loss = self._calculateLossIndividual(
+                (target_state_val, target_policy), (pred_state_val, pred_policy)
+            )
+
+            for ind, mse, ce, p_sv, p_p in zip(i.tolist(), mse_loss.tolist(), ce_loss.tolist(), pred_state_val.tolist(), torch.softmax(pred_policy, dim=-1).tolist()):
+                losses.append((ind, mse, ce, p_sv, p_p))
+
+        sorted_losses = sorted(losses, key=lambda it:it[1]+it[2])
+        print(f"Worst predictions")
+        for ind, mse, ce, p_sv, p_p in sorted_losses[-5:]:
+            state, state_val, action_probs = dataloader.dataset.getOriginalItem(ind)
+            print(f"{state}")
+            print(f"State Val : Target={state_val:.5f} Pred={p_sv:.5f}")
+            print(f"Action Probs :\nTarget:\t{[f'{p:.3f}' for p in action_probs]}\nPred:\t{[f'{p:.3f}' for p in p_p]}")
+            print(f"MSE loss={mse:.5f} CE Loss={ce:.5f}")
+
+        print(f"\n\nBest predictions")
+        for ind, mse, ce, p_sv, p_p in sorted_losses[:5]:
+            state, state_val, action_probs = dataloader.dataset.getOriginalItem(ind)
+            print(f"{state}")
+            print(f"State Val : Target={state_val:.5f} Pred={p_sv:.5f}")
+            print(f"Action Probs :\nTarget:\t{[f'{p:.3f}' for p in action_probs]}\nPred:\t{[f'{p:.3f}' for p in p_p]}")
+            print(f"MSE loss={mse:.5f} CE Loss={ce:.5f}")
+
+        print(f"\n\nMid predictions")
+        half_ind = len(sorted_losses)//2
+        for ind, mse, ce, p_sv, p_p in sorted_losses[half_ind : half_ind + 5]:
+            state, state_val, action_probs = dataloader.dataset.getOriginalItem(ind)
+            print(f"{state}")
+            print(f"State Val : Target={state_val:.5f} Pred={p_sv:.5f}")
+            print(f"Action Probs :\nTarget:\t{[f'{p:.3f}' for p in action_probs]}\nPred:\t{[f'{p:.3f}' for p in p_p]}")
+            print(f"MSE loss={mse:.5f} CE Loss={ce:.5f}")
+            
+
+        print()
+
+
+        
