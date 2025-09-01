@@ -9,9 +9,9 @@ import { BlockMath, InlineMath } from "react-katex";
 import "katex/dist/katex.min.css"; // Import KaTeX styles
 import "../../styles/Blog/BlogSection.css";
 
-function BlogSection({ title, content }) {
+function BlogSection({ uuid, title, content }) {
   return (
-    <AccordionItem>
+    <AccordionItem uuid={uuid}>
       <AccordionItemHeading>
         <AccordionItemButton>
         {title}</AccordionItemButton>

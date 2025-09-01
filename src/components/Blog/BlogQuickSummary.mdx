@@ -1,0 +1,7 @@
+The AI Agent you're playing against uses a technique called **Monte Carlo Tree Search (MCTS)** with the **Upper Confidence Bound for Trees (UCT)** *heuristic* in order to (relatively) quickly come up with responses for moves. 
+
+While it is possible to simply brute-force search all the way to the end of the game to determine what is the best move to play, such techniques tend to be extremely computationally intensive. Given that there are around 4.5 trillion states (legal board positions), it takes a massive amount of compute, as well as some clever algorithmic tricks (eg alpha-beta pruning, exploiting symmetry) to solve the game completely and quickly.
+
+**Monte Carlo Tree Search** is an alternative that can be used to heuristically search through the **GameTree**. While MCTS does not solve the game completely, it is able to discover better moves the more time its given. The technique is versatile, allowing it to be extended to other games with little effort. MCTS essentially performs a large number of game simulations from the current position, and chooses the move that results in the best expected outcome.
+
+While the vanilla form of MCTS is useful, the complexity of games can quickly render it practically useless. The **Upper Confidence Bound for Trees** *heuristic* helps perform simulations in a semi-informed manner (monitoring the outcomes of simulations already performed, and using information gained to direct the next simulations). This heuristic balances *exploration* of new moves with *exploitation* of currently known good moves.

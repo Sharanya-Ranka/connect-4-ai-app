@@ -1,0 +1,8 @@
+
+A weak upper bound on the number of nodes would be of the order of $O(m^d)$ where
+$m$ is the number of options available per turn ($=7$) and $d$ is the maximum number of moves in the game ($d < 6 \cdot 7 $). This number is $\approx 3\cdot 10^{35}$
+
+
+
+
+The entire evolution of a game of Connect4 can be described in the form of a *GameTree*. Each game starts at the root node/state (an empty board) and proceeds along edges (moves by either player) to reach next states (a board with an additional yellow/red coin placed compared to the previous state).

@@ -14,6 +14,9 @@ import "katex/dist/katex.min.css"; // Import KaTeX styles
 
 import blogContent from "../../data/blogContent1.json";
 import BlogSection from "./BlogSection";
+import BlogQuickSummary from "./BlogQuickSummary.mdx"
+import BlogMonteCarloTreeSearch from "./BlogMonteCarloTreeSearch.mdx"
+import BlogUpperConfidenceBound from "./BlogUpperConfidenceBound.mdx"
 
 function Blog() {
   const [contentData, setContentData] = React.useState([]);
@@ -36,21 +39,29 @@ function Blog() {
       }
     });
   };
+  const sectionData = [
+  { title: "Quick Summary", content: <BlogQuickSummary /> },
+  // { title: "Monte Carlo Tree Search", content: <BlogMonteCarloTreeSearch /> },
+  // { title: "Upper Confidence Bound for Trees", content: <BlogUpperConfidenceBound /> },
+];
 
-  const accordionItems = Object.entries(blogContent).map(([key, value]) => {
-    // Perform your operation here with key and value
-    return (<AccordionItem>
-      <BlogSection title={value.title} content={renderContent(value.data)} />
-    </AccordionItem>); // Example: creating an array of strings
-  });
+  const accordionItems = sectionData.map((section, index) => (
+    <BlogSection uuid={index} title={section.title} content={section.content} />
+  ));
+  // Object.entries(blogContent).map(([key, value]) => {
+  //   // Perform your operation here with key and value
+  //   return (<AccordionItem>
+  //     <BlogSection title={value.title} content={renderContent(value.data)} />
+  //   </AccordionItem>); // Example: creating an array of strings
+  // });
 
   return (
     <div className="blog">
-      <h1>Understanding Monte Carlo Tree Search</h1>
-      <h1>Coming Soon!</h1>
+      {/* <h1>Understanding Monte Carlo Tree Search</h1>
+      <h1>Coming Soon!</h1> */}
 
-      <Accordion allowZeroExpanded allowMultipleExpanded={true}>
-        {/* {accordionItems} */}
+      <Accordion allowZeroExpanded allowMultipleExpanded={true} preExpanded={[0]}>
+        {accordionItems}
         {/* <AccordionItem>
           <BlogSection
             title={blogContent.BlogGist.title}
