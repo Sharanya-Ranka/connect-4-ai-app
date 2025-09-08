@@ -96,8 +96,8 @@ class ConvolutionalPAndVNetwork(nn.Module):
         # effectively performing global average pooling.
         self.policy_pool = nn.AdaptiveAvgPool2d((1, 1))
         # Linear layer to output logits for each column (action)
-        self.policy_fc1 = nn.Linear(policy_head_filters, policy_head_filters//2)
-        self.policy_fc2 = nn.Linear(policy_head_filters//2, num_cols)
+        self.policy_fc1 = nn.Linear(policy_head_filters, policy_head_filters // 2)
+        self.policy_fc2 = nn.Linear(policy_head_filters // 2, num_cols)
         self.policy_dropout = nn.Dropout(dropout_rate)
 
         # --- Value Head ---
@@ -152,7 +152,7 @@ class ConvolutionalPAndVNetwork(nn.Module):
         policy_x = self.policy_dropout(policy_x)
         # Final linear layer for policy logits
         policy_x = F.relu(self.policy_fc1(policy_x))
-        policy_op =   self.policy_fc2(policy_x) # Output logits
+        policy_op = self.policy_fc2(policy_x)  # Output logits
 
         # --- Value Head Forward Pass ---
         # Apply 1x1 convolution, batch norm, and ReLU
@@ -175,7 +175,6 @@ class ConvolutionalPAndVNetwork(nn.Module):
         return value_op, policy_op
 
 
-
 class Convolutional4PAndVNetwork(nn.Module):
     """
     A Convolutional Neural Network (CNN) based Policy and Value network
@@ -194,23 +193,25 @@ class Convolutional4PAndVNetwork(nn.Module):
             "NUM_INITIAL_CHANNELS"
         ]  # Number of channels (e.g., 3 for player1, player2, empty)
         num_filters = config["NUM_CNN_FILTERS"]
+        initial_kernel_size = 4
         kernel_size = config["KERNEL_SIZE"]
         dropout_rate = config["DROPOUT_RATE"]
         policy_head_filters = config["POLICY_HEAD_FILTERS"]
         value_head_filters = config["VALUE_HEAD_FILTERS"]
-        flattened_size = (num_rows - kernel_size + 1) * (num_cols - kernel_size + 1)
+        flattened_size = (num_rows - initial_kernel_size + 1) * (
+            num_cols - initial_kernel_size + 1
+        )
 
         # --- Initial Convolutional Block ---
         # This layer processes the raw board state (unique_tokens channels)
         # into a higher-dimensional feature map (num_filters).
         self.initial_conv = nn.Conv2d(
-            initial_channels, num_filters, kernel_size=kernel_size, padding=0
+            initial_channels, num_filters, kernel_size=initial_kernel_size, padding=0
         )
         self.initial_bn = nn.BatchNorm2d(num_filters)
 
-        padding_maintain_shape = kernel_size // 2
         self.conv2 = nn.Conv2d(
-            num_filters, num_filters, kernel_size=3, padding='same'
+            num_filters, num_filters, kernel_size=kernel_size, padding="same"
         )
         self.bn2 = nn.BatchNorm2d(num_filters)
 
@@ -223,10 +224,12 @@ class Convolutional4PAndVNetwork(nn.Module):
         self.policy_bn = nn.BatchNorm2d(policy_head_filters)
 
         policy_head_flattened_size = flattened_size * policy_head_filters
-        
+
         # Linear layer to output logits for each column (action)
-        self.policy_fc1 = nn.Linear(policy_head_flattened_size, policy_head_flattened_size//2)
-        self.policy_fc2 = nn.Linear(policy_head_flattened_size//2, num_cols)
+        self.policy_fc1 = nn.Linear(
+            policy_head_flattened_size, policy_head_flattened_size // 2
+        )
+        self.policy_fc2 = nn.Linear(policy_head_flattened_size // 2, num_cols)
         self.policy_dropout = nn.Dropout(dropout_rate)
 
         # --- Value Head ---
@@ -251,14 +254,6 @@ class Convolutional4PAndVNetwork(nn.Module):
         return self.forward(inp)
 
     def forward(self, inp):
-        # The input `inp` is expected to be flattened, so we need to reshape it
-        # from (batch_size, NUM_ROWS * NUM_COLS * UNIQUE_TOKENS)
-        # to (batch_size, UNIQUE_TOKENS, NUM_ROWS, NUM_COLS)
-        # batch_size = inp.shape[0]
-        num_rows = self.config["NUM_ROWS"]
-        num_cols = self.config["NUM_COLS"]
-        initial_channels = self.config["NUM_INITIAL_CHANNELS"]
-
         # Reshape input to (batch_size, channels, height, width)
         # Make sure the order of dimensions is correct: unique_tokens as channels
         # breakpoint()
@@ -278,7 +273,7 @@ class Convolutional4PAndVNetwork(nn.Module):
         policy_x = self.policy_dropout(policy_x)
         # Final linear layer for policy logits
         policy_x = F.relu(self.policy_fc1(policy_x))
-        policy_op =   self.policy_fc2(policy_x) # Output logits
+        policy_op = self.policy_fc2(policy_x)  # Output logits
 
         # --- Value Head Forward Pass ---
         # Apply 1x1 convolution, batch norm, and ReLU

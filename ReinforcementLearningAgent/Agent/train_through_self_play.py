@@ -26,6 +26,7 @@ class SelfPlayOrchestrator:
     def initializeAgent(self):
         # Config should consist of atleast the model config and the agent config
         self.agent = DeepNNAndMCTSAgent(self.config)
+        # Required to prevent different agents from performing the exact same set of simulations
         seed = os.getpid()
         np.random.seed(seed)
 
@@ -35,7 +36,7 @@ class SelfPlayOrchestrator:
         for game_num in range(self.sp_config["NUM_GAMES"]):
 
             all_games_data.append(self.playAGame())
-            if game_num % 10 == 0:
+            if game_num % 20 == 0:
                 print(f"Completed game {game_num}")
                 print(f"Agent cache size={len(self.agent.state_cache)}")
             # print(f"{all_games_data[-1][-1][0]}")
@@ -79,7 +80,7 @@ class SelfPlayOrchestrator:
                 0
                 if state.getWinner() == GameState.NOONE
                 else -1 if inter_state.next_player == state.getWinner() else 1
-            ) * np.power(gamma, len(current_game_data) - (i+1))
+            ) * np.power(gamma, len(current_game_data) - (i + 1))
 
             current_game_data[i][1] = state_value
 

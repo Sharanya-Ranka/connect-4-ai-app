@@ -13,6 +13,12 @@ mp.set_start_method("spawn", force=True)
 from GameImplementation import game_play
 from Agent.train_through_self_play import SelfPlayAndTrainingOrchestrator
 from Agent.deepnn_and_mcts_agent import DeepNNAndMCTSAgent
+from config import (
+    PIPELINE,
+    MODEL_VERIFICATION_PIPELINE,
+    SELF_PLAY_AND_TRAINING_PIPELINE,
+    ARENA_PIPELINE,
+)
 from config import getSelfPlayFullConfig
 
 
@@ -26,7 +32,7 @@ def cleanUp():
             print(f"File '{file_path}' deleted successfully.")
 
 
-def runExperiment():
+def runSelfPlayAndTrainingPipeline():
     self_play_config = getSelfPlayFullConfig()
     spto = SelfPlayAndTrainingOrchestrator(self_play_config)
 
@@ -37,12 +43,31 @@ def runExperiment():
     # profiler.disable()
 
 
-if __name__ == "__main__":
-    # cleanUp()
-    runExperiment()
+def runModelVerificationPipeline():
+    from Experiments import model_checks
+    from config import TEST_CONFIG
 
-    # model_weights_source = "ModelCheckpoints/debug_model/iteration_90.pth"
-    # checkModel(model_weights_source)
+    mt = model_checks.ModelTesting(TEST_CONFIG)
+    mt.performTest()
+
+
+def runArenaPipeline():
+    from Agent import arena
+    from config import ARENA_CONFIG
+
+    arena_runner = arena.Arena(ARENA_CONFIG)
+    arena_runner.overallPipeline()
+
+
+if __name__ == "__main__":
+    if PIPELINE == SELF_PLAY_AND_TRAINING_PIPELINE:
+        runSelfPlayAndTrainingPipeline()
+    elif PIPELINE == MODEL_VERIFICATION_PIPELINE:
+        runModelVerificationPipeline()
+    elif PIPELINE == ARENA_PIPELINE:
+        runArenaPipeline()
+    else:
+        print(f"No valid pipeline selected. Exiting")
 
 
 # Print the statistics

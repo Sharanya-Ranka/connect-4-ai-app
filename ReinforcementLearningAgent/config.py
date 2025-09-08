@@ -52,7 +52,7 @@ AGENT_CONFIG = dict(
 # Model config Convolutional4PAndV
 MODEL_CONFIG = dict(
     NUM_CNN_FILTERS=256,
-    KERNEL_SIZE=4,
+    KERNEL_SIZE=3,
     DROPOUT_RATE=0.2,
     POLICY_HEAD_FILTERS=8,
     VALUE_HEAD_FILTERS=8,
@@ -70,6 +70,15 @@ TRAINING_CONFIG = dict(
     BASE_PATH="ModelCheckpoints/debug_model",
 )
 
+ARENA_CONFIG = dict(
+    ITERATIONS_COMPARE=[1, 5, 10],
+    AGENT_CONFIG=AGENT_CONFIG,
+    MODEL_CONFIG=MODEL_CONFIG,
+    WEIGHTS_BASE_PATH=TRAINING_CONFIG["BASE_PATH"],
+    NUM_GAMES=2 * 50,
+    BEGIN_POSITION_DEPTH=5,
+)
+
 TEST_CONFIG = dict(
     TEST="Accuracy",
     # Test specifics
@@ -77,6 +86,12 @@ TEST_CONFIG = dict(
     TEST_CASE_SET="DEFAULT_TEST_CASES",
     MODEL_WEIGHTS_SOURCE="ModelCheckpoints/debug_model/iteration_33.pth",
 )
+
+SELF_PLAY_AND_TRAINING_PIPELINE = "SelfPlayAndTrainingPipeline"
+MODEL_VERIFICATION_PIPELINE = "ModelVerificationPipeline"
+ARENA_PIPELINE = "ArenaPipeline"
+
+PIPELINE = SELF_PLAY_AND_TRAINING_PIPELINE
 
 
 def getAgentFullConfig():
