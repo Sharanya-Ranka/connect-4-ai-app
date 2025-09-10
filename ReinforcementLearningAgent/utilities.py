@@ -1,5 +1,6 @@
 from GameImplementation.game_state import GameState
 import numpy as np
+import torch
 
 
 class PositionProvider:
@@ -27,3 +28,18 @@ class PositionProvider:
             set_of_states.add(state)
 
         return list(set_of_states)
+
+
+class ModelSaver:
+    @staticmethod
+    def saveONNXModel(model, dummy_input, save_filepath):
+        torch.onnx.export(
+            model, 
+            dummy_input, 
+            save_filepath, 
+            export_params=True, 
+            opset_version=11, 
+            do_constant_folding=True
+        )
+
+        
