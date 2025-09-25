@@ -15,6 +15,9 @@ shade-narrow-watch-2024-03-31_193132.tgz
 localhost-1724677141576.log
 Screenshot 2024-08-30 014850.jpg
 
+# ipynbs
+.ipynb_checkpoints
+
 # model checkpoints
 ModelCheckpoints/
 

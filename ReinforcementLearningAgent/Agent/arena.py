@@ -82,12 +82,8 @@ def playOffRunnerFunction(config):
 class ArenaOrchestrator:
     def __init__(self, config):
         self.config = config
-        self.sp_config = config["SELF_PLAY_CONFIG"]
-        self.tr_config = config["TRAINING_CONFIG"]
-        self.model_config = config["MODEL_CONFIG"]
-        self.agent_config = config["AGENT_CONFIG"]
-
-        self.game_data_store = []
+        self.model_config = config['MODEL_CONFIG']
+        self.agent_config = config['AGENT_CONFIG']
 
     def overallPipeline(self):
         positions = PositionProvider.generateStartingPositions(
@@ -132,24 +128,27 @@ class ArenaOrchestrator:
 
     def playOff(self, player1_iter, player2_iter, positions):
         playoff_config = self.getPlayOffConfig(player1_iter, player2_iter)
-
-        if self.sp_config.get("USE_MULTIPROCESSING", False) == False:
+        all_playoff_data = [0, 0]
+        if self.config.get("USE_MULTIPROCESSING", False) == False:
             playoff_config["POSITIONS"] = positions
             # No multiprocessing
             sp = PlayOffOrchestrator(config=playoff_config)
             # breakpoint()
-            all_playoff_data = sp.playOffPipeline()
+            playoff_data = sp.playOffPipeline()
+            all_playoff_data[0] += process_playoff_data[0]
+            all_playoff_data[1] += process_playoff_data[1]
         else:
             # Use multiprocessing
-            max_workers = self.sp_config["N_MULTIPROCESS_GAME_RUNNERS"]
-            all_playoff_data = (0, 0)
+            max_workers = self.config["N_MULTIPROCESS_GAME_RUNNERS"]
+            
             with ProcessPoolExecutor(max_workers=max_workers) as executor:
                 futures = set()
-                positions_per_worker = np.ceil(len(positions) / max_workers)
+                positions_per_worker = int(np.ceil(len(positions) / max_workers))
                 for worker_ind in range(max_workers):
                     cur_playoff_config = playoff_config.copy()
                     start_pos = worker_ind * positions_per_worker
                     end_pos = start_pos + positions_per_worker
+                    # print(start_pos, end_pos)
                     cur_playoff_config["POSITIONS"] = positions[start_pos:end_pos]
                     futures.add(
                         executor.submit(playOffRunnerFunction, cur_playoff_config)

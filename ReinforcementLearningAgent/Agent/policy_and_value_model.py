@@ -17,10 +17,10 @@ def createNewModel(config):
 
     if config.get("USE_GPU", False) == True and torch.cuda.is_available():
         device = torch.device("cuda")
-        print("GPU is available. Using CUDA device.")
+        # print("GPU is available. Using CUDA device.")
     else:
         device = torch.device("cpu")
-        print("GPU is not available. Using CPU device.")
+        # print("GPU is not available. Using CPU device.")
 
     model = model.to(device)
 
@@ -34,10 +34,10 @@ def loadModel(config):
 
     if config.get("USE_GPU", False) == True and torch.cuda.is_available():
         device = torch.device("cuda")
-        print("GPU is available. Using CUDA device.")
+        # print("GPU is available. Using CUDA device.")
     else:
         device = torch.device("cpu")
-        print("GPU is not available. Using CPU device.")
+        # print("GPU is not available. Using CPU device.")
 
     assert weights_source is not None
 

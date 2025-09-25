@@ -18,6 +18,7 @@ from config import (
     MODEL_VERIFICATION_PIPELINE,
     SELF_PLAY_AND_TRAINING_PIPELINE,
     ARENA_PIPELINE,
+ONNX_SAVE_PIPELINE,
 )
 from config import getSelfPlayFullConfig
 
@@ -55,17 +56,38 @@ def runArenaPipeline():
     from Agent import arena
     from config import ARENA_CONFIG
 
-    arena_runner = arena.Arena(ARENA_CONFIG)
+    arena_runner = arena.ArenaOrchestrator(ARENA_CONFIG)
     arena_runner.overallPipeline()
+
+def runONNXModelSavePipeline():
+    from config import SAVE_CONFIG
+    from utilities import ModelSaver
+    from GameImplementation.game_state import GameState
+    from Agent.policy_and_value_model import loadModel, preprocessState
+
+    model_config = SAVE_CONFIG['MODEL_CONFIG']
+    model = loadModel(model_config)
+    dummy_input = preprocessState(GameState()).unsqueeze(dim=0)
+    print(f"Dummy input shape={dummy_input.shape}")
+    
+    ModelSaver.saveONNXModel(model, dummy_input, SAVE_CONFIG['SAVE_FILEPATH'])
+    
+    
 
 
 if __name__ == "__main__":
     if PIPELINE == SELF_PLAY_AND_TRAINING_PIPELINE:
+        print(f"Running Self Play and Training Pipeline")
         runSelfPlayAndTrainingPipeline()
     elif PIPELINE == MODEL_VERIFICATION_PIPELINE:
+        print(f"Running Model Verification Pipeline")
         runModelVerificationPipeline()
     elif PIPELINE == ARENA_PIPELINE:
+        print(f"Running Arena Pipeline")
         runArenaPipeline()
+    elif PIPELINE == ONNX_SAVE_PIPELINE:
+        print(f"Running ONNX Model Save Pipeline")
+        runONNXModelSavePipeline()
     else:
         print(f"No valid pipeline selected. Exiting")
 
