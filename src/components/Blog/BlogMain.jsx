@@ -15,8 +15,10 @@ import "katex/dist/katex.min.css"; // Import KaTeX styles
 import blogContent from "../../data/blogContent1.json";
 import BlogSection from "./BlogSection";
 import BlogQuickSummary from "./BlogQuickSummary.mdx"
+import BlogAlphaZero from "./BlogAlphaZero.mdx"
 import BlogMonteCarloTreeSearch from "./BlogMonteCarloTreeSearch.mdx"
 import BlogUpperConfidenceBound from "./BlogUpperConfidenceBound.mdx"
+import "../../styles/Blog/BlogMain.css"
 
 function Blog() {
   const [contentData, setContentData] = React.useState([]);
@@ -41,6 +43,7 @@ function Blog() {
   };
   const sectionData = [
   { title: "Quick Summary", content: <BlogQuickSummary /> },
+  { title: "The AlphaZero Approach", content: <BlogAlphaZero />}
   // { title: "Monte Carlo Tree Search", content: <BlogMonteCarloTreeSearch /> },
   // { title: "Upper Confidence Bound for Trees", content: <BlogUpperConfidenceBound /> },
 ];
