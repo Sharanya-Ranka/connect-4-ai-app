@@ -4,9 +4,9 @@
 
 The above diagram depicts the **AlphaZero Reinforcement Learning Algorithm** at a very high level.
 
-Games like Chess and Go are far more complex compared to Connect4. Chess and Go can have many
-more *possible choices per move* (a maximum of 7 for Connect4 compared to an average of about 30 for Chess and 250 for Go). Furthermore,
-and even tend to *last longer* (maximum of 42 plies/half-moves for Connect4, versus an average of 80 for Chess and 200 for Go). These characteristics
+Games like Chess and Go are far more complex compared to Connect4. They have many
+more *possible choices per move* (an average of about 30 for Chess and 250 for Go versus a maximum of 7 for Connect4),
+and even tend to *last longer* (an average of 80 plies/half-moves for Chess and 200 for Go compared to a maximum of 42 for Connect4). These characteristics
 result in the GameTree for Go and Chess being **far broader and deeper** than Connect4.
 
 We need to depend on other techniques to aid in our search for good moves, and the AlphaZero RL Algorithm brings in some new tools.
