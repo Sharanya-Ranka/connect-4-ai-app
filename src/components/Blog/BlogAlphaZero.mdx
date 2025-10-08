@@ -7,6 +7,29 @@ The above diagram depicts the **AlphaZero Reinforcement Learning Algorithm** at 
 Games like Chess and Go are far more complex compared to Connect4. They have many
 more *possible choices per move* (an average of about 30 for Chess and 250 for Go versus a maximum of 7 for Connect4),
 and even tend to *last longer* (an average of 80 plies/half-moves for Chess and 200 for Go compared to a maximum of 42 for Connect4). These characteristics
-result in the GameTree for Go and Chess being **far broader and deeper** than Connect4.
+result in the Game Tree for Go and Chess being **far broader and deeper** than Connect4.
 
 We need to depend on other techniques to aid in our search for good moves, and the AlphaZero RL Algorithm brings in some new tools.
+
+An interesting observation in MCTS is that you need to **redo the analysis for each node to assess the goodness of moves**. It does not matter if
+you encountered a very similar state previously in the Game Tree - there is no way to "transfer" any knowledge gained there to this state. This is
+where **pairing the algorithm with a Neural Network helps**. The Network serves up **"intuitions"** about the state, while the MCTS done after verifies and **refines these intuitions**. Estimates about the *state's value* (How good is this state?) and *optimal policy* (What are the good moves from this state?)
+help in effectively navigating the massive Game Tree.
+
+But how do we *train* the Neural Network? Do we have any data with the state values or policies already known? Well, kinda... Since we don't know what "perfect play" looks like, we can instead use games played by experts as "proxies".
+Expert level data is already "labeled" (the expert chooses a good move to play in the current state) and getting a Neural Network(NN) to predict a large number of such examples may **encourage it to learn some useful patterns**. This was how AlphaGo first learned — by imitating human experts. AlphaZero, however, dispensed with this step entirely. 
+
+Remember that the MCTS refined the estimates produced by the Neural Network? What if we *feed those back* as training data for the model? It would learn to predict the refined values right from the get-go, and then MCTS would produce *even more refined* estimates. 
+And if we get our NN to train on that... It's like a moving goalpost for the poor Neural Network, but if done correctly, will improve the model further every iteration! And what's most exciting is that this technique *really does work!* While the previous AlphaGo model beat the then reigning Go Champion - Lee Sedol in 2016, AlphaZero outperformed even AlphaGo.
+
+It’s worth noting that AlphaZero also **differed from AlphaGo in several major architectural ways** (and the changes were first introduced in AlphaGo Zero - a precursor to AlphaZero). These probably contributed more to its triumph over AlphaGo, since AlphaGo used a similar iterative learning technique after its "imitation learning" phase.
+
+    * AlphaGo Zero trained a **Deep Convolutional Neural Network** using the raw board state (and some history) as its input. This is in contrast to human-engineered features provided to AlphaGo - demonstrating that while biases may be useful to guide learning, they likely also cause the model to underperform.
+
+    * AlphaGo Zero used a *single network to output both State Value and Policy Estimations*. The research team mentions that this has a "regularizing" effect on the model (in this context - learning patterns that are useful for predicting both value and policy). The model benefits from a better training signal than individual models trained on value and policy separately.
+
+
+The DeepMind team have done a fantastic job explaining their models and technical details in their research papers — I highly recommend checking them out if you’re curious to dive deeper!<br/>
+<a href="https://www.nature.com/articles/nature16961" target="_blank">AlphaGo</a> (Imitation Learning + Human engineered features + Self-Play Reinforcement Learning)<br/>
+<a href="https://deepmind.google/discover/blog/alphago-zero-starting-from-scratch/" target="_blank">AlphaGo Zero</a> (Only Self-Play Reinforcement Learning with a Deep CNN for learning features)<br/>
+<a href="https://arxiv.org/abs/1712.01815" target="_blank">AlphaZero</a> (Generalizes AlphaGo Zero to games like Chess/Shogi)<br/>

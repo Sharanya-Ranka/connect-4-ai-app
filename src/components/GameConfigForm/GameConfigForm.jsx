@@ -184,7 +184,7 @@ export default function GameConfigForm({
 
   const monitor_option = (
     <>
-      <option value={MCTS_UCT_PLAYER}>{MCTS_UCT_PLAYER}</option>
+      <option value={MCTS_UCT_PLAYER}>{MCTS_UCT_PLAYER_TEXTDISPLAY}</option>
     </>
   );
 
