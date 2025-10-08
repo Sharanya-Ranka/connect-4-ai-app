@@ -8,7 +8,9 @@ function roundNDecimals(num, n) {
   return Math.round(num * Math.pow(10, n)) / Math.pow(10, n);
 }
 
-class GameStateMCTSWithUCT extends GameState {
+class GameStateForAlphaZero extends GameState {
+    // We need a GameState with additional functionality. Just like MCTS, we need to keep track of plays and wins (state value)
+    // Furthermore, The Neural network recognizes a different representation of the state, so we need to convert to that state 
   constructor(max_rows, max_columns, all_moves = null) {
     super(max_rows, max_columns, all_moves);
     this.wins = 0;
@@ -39,15 +41,24 @@ class GameStateMCTSWithUCT extends GameState {
   }
 }
 
-class MCTSWithUCTPlayerWorker {
+class AlphaZeroLikeWorker {
   constructor(num_playouts, player_num) {
     this.states_known = new Map();
     this.current_state = null;
     this.uct_c_coeff = 2;
+    this.player_num = player_num;
+
     this.num_playouts = num_playouts;
     this.num_playouts_per_chunk = 100;
     this.num_playouts_performed = 0;
-    this.player_num = player_num;
+    
+    this.nn = null
+    this.intitializeNN()
+  }
+
+  intitializeNN(){
+    // Initializes an already trained Neural Network (System only suitable for inference)
+    
   }
 
   async getCurrentStateWinChance(current_state) {
@@ -68,62 +79,74 @@ class MCTSWithUCTPlayerWorker {
   }
 
   async getMoveAsync(current_state) {
-    // await this.sleep(2 * 1000);
+    // Main function to solicit moves in an asynchronous fashion (Required to balance AI computation with UI computation)
+
+    // So that we do not hog the client's memory
     this.forgetUnrequiredStates();
+
+    // We may have a game tree rooted at a previous (ancestor) state, but the game has evolved. Find the new root
     this.updateCurrentState(current_state);
-    // console.log("getMoveAsync : Current state", current_state);
-    // const win_chance = this.getUCTScoreForState(this.current_state, 0);
-    // console.log("Win chance for move chosen=", win_chance * 100);
+    
+    // Setup and execution for performing playouts in an asynchronous way
     this.num_playouts_performed = 0;
     await this.performPlayouts();
-    // console.log("Current state", this.current_state);
-    const target_state = this.chooseBestChild(this.current_state, 0);
-    // console.log("Target state:", target_state);
-    // this.getChildStatistics(this.current_state);
 
-    // console.log("Number of states known", this.states_known.size);
+    // The best child of the current state is selected (The move we want to perform takes the game from the current state to the best child)
+    const target_state = this.chooseBestChild(this.current_state, 0);
+
     return {
       move: target_state.getLastMove()[1],
-      // estimated_evaluations_tree_data: estimated_evaluations_tree_data,
       win_chance: this.getUCTScoreForState(target_state, 0),
     };
   }
 
   async performPlayouts(resolveCallback) {
+    // Perform playouts asynchronously (this works like a coroutine, giving up control every num_playouts_per_chunk playouts)
     console.log("Scheduling new playout chunk for", this.num_playouts);
+
+    // Calculates the cumulative playouts till this chunk's end
     const final_playouts_when_chunk_ends = Math.min(
       this.num_playouts,
       this.num_playouts_performed + this.num_playouts_per_chunk,
     );
+
+    // Performs playouts (this part is blocking, and finishes quikly, num_playouts_per_chunk is calibrated for that)
     while (this.num_playouts_performed < final_playouts_when_chunk_ends) {
       this.allMCTSSteps();
       this.num_playouts_performed += 1;
-      // console.log("Number of playouts performed", this.num_playouts_performed);
     }
 
+    // Handles saving, resuming, finishing the function call
     if (this.num_playouts_performed < this.num_playouts) {
+        // Not done, need to resume later, but give up control now
       if (resolveCallback) {
-        // console.log("Case1");
+        // Case: This is the kth (> 1) run of the function. We have a callback to trigger once we're done, which will trigger the original caller.
+        // But continue for now, take back control at the earliest possible moment
         setTimeout(() => this.performPlayouts(resolveCallback), 0);
       } else {
-        // console.log("Case2");
+        // Case: This is the first run of the function.
+        // Caller will await on this promise, resolve will be sent forwrd to the last running instance of this function
         return new Promise((resolve) => this.performPlayouts(resolve));
       }
     } else {
+        // Completed all playouts! Finish
       if (resolveCallback) {
-        // console.log("Case3");
+        // Resolve callback (The caller was awaiting the result). Nothing to return, since the results are saved as instance attributes
         resolveCallback();
       } else {
+        // The first call itself completed, so we dont have a callback. Simply return
         return;
       }
     }
   }
 
   forgetUnrequiredStates() {
+    // Clear all states (Is this what we want to do?)
     this.states_known.clear();
   }
 
   getMove(current_state) {
+    // Synchronous/Blocking way of soliciting moves. Unused, but easier to understand 
     this.updateCurrentState(current_state);
     for (let sim = 0; sim < this.num_playouts; sim++) {
       this.allMCTSSteps();
@@ -140,6 +163,7 @@ class MCTSWithUCTPlayerWorker {
   }
 
   getChildStatistics(state) {
+    // NOT USED
     // Retrieve the children of the current state from this.states_known.
     // We will choose the best child (as currently estimated using UCT scores)
     const children = this.getChildKnownStates(state);
@@ -151,14 +175,10 @@ class MCTSWithUCTPlayerWorker {
     const all_child_scores = children.map((child_state) =>
       this.getUCTScoreForState(child_state, 0),
     );
-    // console.log(this.player_num);
-    // console.log(all_child_wins);
-    // console.log(all_child_plays);
-    // console.log(all_child_scores.map((num) => roundNDecimals(num, 2)));
-    // console.log();
   }
 
   getEstimatedEvaluationsTree() {
+    // NOT USED (Was useful earlier)
     // console.log("In estimated evaluations tree");
     // console.log("Current state", this.current_state);
     // console.log()
@@ -201,6 +221,7 @@ class MCTSWithUCTPlayerWorker {
   }
 
   updateCurrentState(state) {
+    // If the existing game tree already has the required state, we just set our current state to that (equivalent to re-rooting the tree to state)
     if (!this.states_known.has(state.getId())) {
       // console.log("updateCurrentState : State not known, creating new state");
       const new_game_state = new GameStateMCTSWithUCT(
@@ -236,10 +257,11 @@ class MCTSWithUCTPlayerWorker {
   }
 
   getUCTScoreForState(state, uct_c_coeff) {
+    // Calculates the UCT based score for the state
     if (state.plays === 0) {
       return Number.POSITIVE_INFINITY;
     } else {
-      // Should never come here if parent is not null
+      // Should never come here if parent is null
       const exploitation_factor = state.wins / state.plays;
       const parent = this.getParentKnownState(state);
       const exploration_factor =
@@ -360,7 +382,7 @@ class MCTSWithUCTPlayerWorker {
   }
 }
 
-export { MCTSWithUCTPlayerWorker };
+export { AlphaZeroLikeWorker };
 
 // // gs = new GameStateMCTSWithUCT();
 // // console.log(gs);
