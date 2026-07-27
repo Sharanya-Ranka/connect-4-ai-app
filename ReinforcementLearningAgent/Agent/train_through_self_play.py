@@ -34,7 +34,6 @@ class SelfPlayOrchestrator:
         # print(f"Started pipeline")
         all_games_data = []
         for game_num in range(self.sp_config["NUM_GAMES"]):
-
             all_games_data.append(self.playAGame())
             if game_num % 20 == 0:
                 print(f"Completed game {game_num}")
@@ -71,7 +70,7 @@ class SelfPlayOrchestrator:
         # current_game_data.append([state, -1, action_info["empirical_action_probs"]])
         # breakpoint()
 
-        gamma = 0.95
+        gamma = 1
 
         for i in range(len(current_game_data)):
             inter_state = current_game_data[i][0]

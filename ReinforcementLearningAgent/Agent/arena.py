@@ -82,17 +82,27 @@ def playOffRunnerFunction(config):
 class ArenaOrchestrator:
     def __init__(self, config):
         self.config = config
-        self.model_config = config['MODEL_CONFIG']
-        self.agent_config = config['AGENT_CONFIG']
+        self.model_config = config["MODEL_CONFIG"]
+        self.agent_config = config["AGENT_CONFIG"]
 
     def overallPipeline(self):
         positions = PositionProvider.generateStartingPositions(
             self.config["BEGIN_POSITION_DEPTH"], self.config["NUM_GAMES"] // 2
         )
 
-        pairings_iterations = itertools.combinations(
-            self.config["ITERATIONS_COMPARE"], 2
+        player_model_iterations = self.config["ITERATIONS_COMPARE"]
+        pairings_iterations = list(
+            itertools.product(player_model_iterations[:2], player_model_iterations[2:])
         )
+        # Successive pairing (k with k+2)
+        # list(
+        #     zip(player_model_iterations[:-2], player_model_iterations[2:])
+        # )
+
+        # All combinations
+        # itertools.combinations(
+        #     self.config["ITERATIONS_COMPARE"], 2
+        # )
 
         for pl1, pl2 in pairings_iterations:
             playoff_data = self.playOff(pl1, pl2, positions)
@@ -134,13 +144,13 @@ class ArenaOrchestrator:
             # No multiprocessing
             sp = PlayOffOrchestrator(config=playoff_config)
             # breakpoint()
-            playoff_data = sp.playOffPipeline()
+            process_playoff_data = sp.playOffPipeline()
             all_playoff_data[0] += process_playoff_data[0]
             all_playoff_data[1] += process_playoff_data[1]
         else:
             # Use multiprocessing
             max_workers = self.config["N_MULTIPROCESS_GAME_RUNNERS"]
-            
+
             with ProcessPoolExecutor(max_workers=max_workers) as executor:
                 futures = set()
                 positions_per_worker = int(np.ceil(len(positions) / max_workers))

@@ -11,16 +11,26 @@ GLOBAL_CONFIG = dict(
 )
 
 
-N_MULTIPROCESS_GAME_RUNNERS = 5
+N_MULTIPROCESS_GAME_RUNNERS = 2
 # Self play config
 SELF_PLAY_CONFIG = dict(
+    # Do you want to use multi-processing in the self-play data collection phase?
     USE_MULTIPROCESSING=True,
+    # How many processes to use to play games
     N_MULTIPROCESS_GAME_RUNNERS=N_MULTIPROCESS_GAME_RUNNERS,
+    # How many iterations to perform (1 iteration = 1 collection step + 1 update step)
     NUM_ITERATIONS=100,
-    START_FROM_ITERATION=9,
+    # Start from some iteration (the model checkpoint at the end of the previous iteration must exist)
+    # Do not provide this if you want to start from scratch
+    # START_FROM_ITERATION=35,
+    # How many (state, mcts_enhanced_action_priors, game_outcome). Too many datapoints will make all datapoints highly dependant. Too few will leave little training data
     NUM_DATAPOINTS_PER_GAME=10,
+    # Data from how many previous iterations must be stored in the replay buffer? Ideally 1, but this leaves too little training data
     NUM_LEGACY_ITERATIONS_DATA=4,
-    GAMES_PER_ITERATION=40 * N_MULTIPROCESS_GAME_RUNNERS,
+    # Number of games to play per iteration. If multiple processes are being used, this will be divided among the processes
+    GAMES_PER_ITERATION=20 * N_MULTIPROCESS_GAME_RUNNERS,
+    # Actions are sampled from the provided distribution over actions modified by the temperature. Larger temperature pushes distributions towards uniform distribution (greater exploration), and smaller temperatures push it towards a point mass distribution (greater exploitation).
+    # Temperature switches from initial to final based on the trigger ply (which move within a game)
     INITIAL_TEMPERATURE=5,
     TRIGGER_PLY=7,
     FINAL_TEMPERATURE=0.1,
@@ -29,56 +39,61 @@ SELF_PLAY_CONFIG = dict(
 
 # Agent config
 AGENT_CONFIG = dict(
+    # Coefficient for the uncertainty based prior. Increasing this value increases model prior based exploration bonus (a term that has a high value if very few vists have occured from that state, or if the model thinks it is a good action to take.)
     UCT_C_COEFF=2,
+    # Number of MCTS playouts for each move in the game
     NUM_PLAYOUTS=100,
+    # Inference is usually performed for each request, but this can be quite slow and not utilize the GPU effectively. Batched inference queues the inference request and registers a "virtual loss" which is reversed when the INFERENCE_MIN_BATCH_SIZE is reached and the results are available
     USE_BATCHED_INFERENCE=True,
     INFERENCE_MIN_BATCH_SIZE=32,
     **GLOBAL_CONFIG,
 )
 
-# # Model config ConvolutionalPAndV
-# MODEL_CONFIG = dict(
-#     NUM_CNN_FILTERS=64,
-#     KERNEL_SIZE=3,
-#     NUM_RESIDUAL_BLOCKS=9,
-#     DROPOUT_RATE=0.2,
-#     POLICY_HEAD_FILTERS=64,
-#     VALUE_HEAD_FILTERS=32,
-#     USE_GPU=True,
-#     **GLOBAL_CONFIG,
-# )
-
-
-# Model config Convolutional4PAndV
+# Model config ConvolutionalPAndV
 MODEL_CONFIG = dict(
-    NUM_CNN_FILTERS=256,
+    NUM_CNN_FILTERS=16,
     KERNEL_SIZE=3,
+    NUM_RESIDUAL_BLOCKS=3,
     DROPOUT_RATE=0.2,
     POLICY_HEAD_FILTERS=8,
     VALUE_HEAD_FILTERS=8,
-    USE_GPU=True,
+    USE_GPU=False,
     **GLOBAL_CONFIG,
 )
 
+
+# # Model config Convolutional4PAndV
+# MODEL_CONFIG = dict(
+#     NUM_CNN_FILTERS=16,
+#     KERNEL_SIZE=3,
+#     DROPOUT_RATE=0.2,
+#     POLICY_HEAD_FILTERS=8,
+#     VALUE_HEAD_FILTERS=8,
+#     USE_GPU=False,
+#     **GLOBAL_CONFIG,
+# )
+
 # Training config
 TRAINING_CONFIG = dict(
+    # Howlarge should the test
     TEST_SIZE=0.1,
-    LEARNING_RATE=0.002,
-    EPOCHS=10,
+    # Learning rate for the training phase
+    LEARNING_RATE=0.0002,
+    EPOCHS=5,
     BATCH_SIZE=32,
-    USE_GPU=True,
+    USE_GPU=False,
     BASE_PATH="ModelCheckpoints/debug_model",
 )
 
 ARENA_CONFIG = dict(
-    ITERATIONS_COMPARE=[0, 1, 30, 33],
+    ITERATIONS_COMPARE=list([1, 2] + [5, 10, 15, 20, 30, 40]),
     AGENT_CONFIG=AGENT_CONFIG,
     MODEL_CONFIG=MODEL_CONFIG,
     BASE_PATH=TRAINING_CONFIG["BASE_PATH"],
-    NUM_GAMES=2 * 100,
+    NUM_GAMES=20,
     BEGIN_POSITION_DEPTH=5,
-    USE_MULTIPROCESSING=True,
-    N_MULTIPROCESS_GAME_RUNNERS=N_MULTIPROCESS_GAME_RUNNERS,
+    USE_MULTIPROCESSING=False,
+    # N_MULTIPROCESS_GAME_RUNNERS=N_MULTIPROCESS_GAME_RUNNERS,
 )
 
 TEST_CONFIG = dict(
@@ -91,7 +106,11 @@ TEST_CONFIG = dict(
 
 SAVE_CONFIG = dict(
     SAVE_FILEPATH="SavedModels/model.onnx",
-    MODEL_CONFIG={**MODEL_CONFIG, "USE_GPU":False, "MODEL_WEIGHTS_SOURCE":"ModelCheckpoints/debug_model/iteration_33.pth"}
+    MODEL_CONFIG={
+        **MODEL_CONFIG,
+        "USE_GPU": False,
+        "MODEL_WEIGHTS_SOURCE": "ModelCheckpoints/debug_model/iteration_33.pth",
+    },
 )
 
 SELF_PLAY_AND_TRAINING_PIPELINE = "SelfPlayAndTrainingPipeline"
@@ -99,7 +118,9 @@ MODEL_VERIFICATION_PIPELINE = "ModelVerificationPipeline"
 ARENA_PIPELINE = "ArenaPipeline"
 ONNX_SAVE_PIPELINE = "ONNXSavePipeline"
 
-PIPELINE = ONNX_SAVE_PIPELINE
+PIPELINE = SELF_PLAY_AND_TRAINING_PIPELINE
+# ARENA_PIPELINE
+# SELF_PLAY_AND_TRAINING_PIPELINE
 
 
 def getAgentFullConfig():
