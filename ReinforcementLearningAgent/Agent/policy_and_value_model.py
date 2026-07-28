@@ -83,7 +83,7 @@ class PolicyAndValueFunction:
 
         if config.get("USE_GPU", False) == True and torch.cuda.is_available():
             device = torch.device("cuda")
-            print("GPU is available. Using CUDA device.")
+            # print("GPU is available. Using CUDA device.")
         else:
             device = torch.device("cpu")
 
@@ -185,7 +185,7 @@ class PolicyAndValueTrainer:
 
         if self.tr_config.get("USE_GPU", False) == True and torch.cuda.is_available():
             device = torch.device("cuda")
-            print("GPU is available. Using CUDA device.")
+            # print("GPU is available. Using CUDA device.")
         else:
             device = torch.device("cpu")
 
@@ -292,7 +292,7 @@ class PolicyAndValueTrainer:
         print(
             f"(Final) Train mse loss={train_mse_losses[-1]:.5f} Train ce loss={train_ce_losses[-1]:.5f} Eval mse loss={eval_mse_losses[-1]:.5f} Eval ce loss={eval_ce_losses[-1]:.5f}"
         )
-        self.analyzeExamples(self.test_dataloader)
+        # self.analyzeExamples(self.test_dataloader)
 
         # breakpoint()
 

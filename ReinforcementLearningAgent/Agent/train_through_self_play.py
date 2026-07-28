@@ -35,9 +35,9 @@ class SelfPlayOrchestrator:
         all_games_data = []
         for game_num in range(self.sp_config["NUM_GAMES"]):
             all_games_data.append(self.playAGame())
-            if game_num % 20 == 0:
-                print(f"Completed game {game_num}")
-                print(f"Agent cache size={len(self.agent.state_cache)}")
+            # if game_num % 20 == 0:
+            #     print(f"Completed game {game_num}")
+            #     print(f"Agent cache size={len(self.agent.state_cache)}")
             # print(f"{all_games_data[-1][-1][0]}")
             # breakpoint()
             # profiler = cProfile.Profile()

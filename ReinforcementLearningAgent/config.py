@@ -11,7 +11,7 @@ GLOBAL_CONFIG = dict(
 )
 
 
-N_MULTIPROCESS_GAME_RUNNERS = 4
+N_MULTIPROCESS_GAME_RUNNERS = 12
 # Self play config
 SELF_PLAY_CONFIG = dict(
     # Do you want to use multi-processing in the self-play data collection phase?
@@ -22,18 +22,18 @@ SELF_PLAY_CONFIG = dict(
     NUM_ITERATIONS=100,
     # Start from some iteration (the model checkpoint at the end of the previous iteration must exist)
     # Do not provide this if you want to start from scratch
-    # START_FROM_ITERATION=33,
+    # START_FROM_ITERATION=30,
     # How many (state, mcts_enhanced_action_priors, game_outcome). Too many datapoints will make all datapoints highly dependant. Too few will leave little training data
     NUM_DATAPOINTS_PER_GAME=10,
     # Data from how many previous iterations must be stored in the replay buffer? Ideally 1, but this leaves too little training data
-    NUM_LEGACY_ITERATIONS_DATA=4,
+    NUM_LEGACY_ITERATIONS_DATA=1,
     # Number of games to play per iteration. If multiple processes are being used, this will be divided among the processes
     GAMES_PER_ITERATION=20 * N_MULTIPROCESS_GAME_RUNNERS,
     # Actions are sampled from the provided distribution over actions modified by the temperature. Larger temperature pushes distributions towards uniform distribution (greater exploration), and smaller temperatures push it towards a point mass distribution (greater exploitation).
     # Temperature switches from initial to final based on the trigger ply (which move within a game)
-    INITIAL_TEMPERATURE=5,
-    TRIGGER_PLY=3,
-    FINAL_TEMPERATURE=0.1,
+    INITIAL_TEMPERATURE=2,
+    TRIGGER_PLY=6,
+    FINAL_TEMPERATURE=0.5,
     **GLOBAL_CONFIG,
 )
 
@@ -57,7 +57,7 @@ MODEL_CONFIG = dict(
     DROPOUT_RATE=0.2,
     POLICY_HEAD_FILTERS=8,
     VALUE_HEAD_FILTERS=8,
-    USE_GPU=False,
+    USE_GPU=True,
     **GLOBAL_CONFIG,
 )
 
@@ -79,15 +79,15 @@ TRAINING_CONFIG = dict(
     TEST_SIZE=0.1,
     # Learning rate for the training phase
     LEARNING_RATE=0.01,
-    DECREASE_LR_EVERY_K_ITERATIONS=15,
-    EPOCHS=5,
+    DECREASE_LR_EVERY_K_ITERATIONS=20,
+    EPOCHS=2,
     BATCH_SIZE=32,
-    USE_GPU=False,
+    USE_GPU=True,
     BASE_PATH="ModelCheckpoints/debug_model",
 )
 
 ARENA_CONFIG = dict(
-    ITERATIONS_COMPARE=list([1, 5] + [27, 28]),
+    ITERATIONS_COMPARE=list([20, 30] + [34, 36]),
     AGENT_CONFIG=dict(
         # Coefficient for the uncertainty based prior. Increasing this value increases model prior based exploration bonus (a term that has a high value if very few vists have occured from that state, or if the model thinks it is a good action to take.)
         UCT_C_COEFF=2,
@@ -100,7 +100,7 @@ ARENA_CONFIG = dict(
     ),
     MODEL_CONFIG=MODEL_CONFIG,
     BASE_PATH=TRAINING_CONFIG["BASE_PATH"],
-    NUM_GAMES=50,
+    NUM_GAMES=2,
     BEGIN_POSITION_DEPTH=5,
     USE_MULTIPROCESSING=False,
     # N_MULTIPROCESS_GAME_RUNNERS=N_MULTIPROCESS_GAME_RUNNERS,

@@ -6,6 +6,7 @@ import itertools
 
 
 import numpy as np
+import re
 
 from Agent.deepnn_and_mcts_agent import DeepNNAndMCTSAgent
 
@@ -23,31 +24,68 @@ class PlayOffOrchestrator:
         self.player1 = DeepNNAndMCTSAgent(self.config["PLAYER1"])
         self.player2 = DeepNNAndMCTSAgent(self.config["PLAYER2"])
 
+    def printGame(self, game_progression, player1_id, player2_id, player_won):
+        win_player_id = player1_id if player_won == GameState.RED else player2_id
+        win_player_colour = "RED" if player_won == GameState.RED else "YELLOW"
+        print(f"New game: {player1_id} vs {player2_id}")
+        print(f"{win_player_id} ({win_player_colour}) Wins")
+        for state, action_info in game_progression:
+            print(state)
+            action_probs = " ".join(
+                map(lambda x: f"{x:.2f}", action_info["empirical_action_probs"])
+            )
+            print(action_probs)
+
+        print(f"Game ends\n")
+
     def playOffPipeline(self):
         player1_wins = 0
         player2_wins = 0
         draws = 0
+        player1_wins_printed = 0
+        player2_wins_printed = 0
+        WINS_TO_PRINT = 1
+
+        # breakpoint()
+
+        player1_id = self.config["PLAYER1"]["MODEL_CONFIG"]["MODEL_WEIGHTS_SOURCE"]
+        player2_id = self.config["PLAYER2"]["MODEL_CONFIG"]["MODEL_WEIGHTS_SOURCE"]
+
+        player1_id = re.search(r"(iteration_\d+)\.pth", player1_id).group(1)
+        player2_id = re.search(r"(iteration_\d+)\.pth", player2_id).group(1)
 
         for position_num, position in enumerate(self.config["POSITIONS"]):
             # To properly test the agents let both of them play from player1's perspective
-            winner_gm1 = self.playAGameFromPosition(
+            winner_gm1, gm1_prog = self.playAGameFromPosition(
                 position, self.player1, self.player2
             )
-            winner_gm2 = self.playAGameFromPosition(
+            winner_gm2, gm2_prog = self.playAGameFromPosition(
                 position, self.player2, self.player1
             )
 
             if winner_gm1 == GameState.RED:
                 player1_wins += 1
+                if player1_wins_printed < WINS_TO_PRINT:
+                    player1_wins_printed += 1
+                    self.printGame(gm1_prog, player1_id, player2_id, GameState.RED)
             elif winner_gm1 == GameState.YELLOW:
                 player2_wins += 1
+                if player2_wins_printed < WINS_TO_PRINT:
+                    player2_wins_printed += 1
+                    self.printGame(gm1_prog, player1_id, player2_id, GameState.YELLOW)
             else:
                 draws += 1
 
             if winner_gm2 == GameState.RED:
                 player2_wins += 1
+                if player2_wins_printed < WINS_TO_PRINT:
+                    player2_wins_printed += 1
+                    self.printGame(gm2_prog, player2_id, player1_id, GameState.RED)
             elif winner_gm2 == GameState.YELLOW:
                 player1_wins += 1
+                if player1_wins_printed < WINS_TO_PRINT:
+                    player1_wins_printed += 1
+                    self.printGame(gm2_prog, player2_id, player1_id, GameState.YELLOW)
             else:
                 draws
 
@@ -55,6 +93,7 @@ class PlayOffOrchestrator:
 
     def playAGameFromPosition(self, position, player1, player2):
         state: GameState = position
+        game_progression = []
 
         while not state.isTerminal():
             if state.next_player == 1:
@@ -66,10 +105,11 @@ class PlayOffOrchestrator:
             action = self.chooseBestAction(
                 action_info["empirical_action_probs"], action_mask
             )
+            game_progression.append((state, action_info))
             # breakpoint()
             state = state.applyMove(action)
 
-        return state.getWinner()
+        return state.getWinner(), game_progression
 
     def chooseBestAction(self, empirical_action_probs, action_mask):
         empirical_action_probs[~action_mask] = -float("inf")
