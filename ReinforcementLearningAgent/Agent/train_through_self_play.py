@@ -241,6 +241,14 @@ class SelfPlayAndTrainingOrchestrator:
             None if game_data is None else reduce(lambda x, y: x + y, game_data, [])
         )
 
+        if (
+            iteration > 0
+            and iteration % self.tr_config["DECREASE_LR_EVERY_K_ITERATIONS"] == 0
+        ):
+            new_lr = self.tr_config["LEARNING_RATE"] / 5
+            self.tr_config["LEARNING_RATE"] = new_lr
+            print(f"Decreasing lr={new_lr} at iteration={iteration}")
+
         tr_config = dict(
             DATA=flattened_game_data,
             MODEL_CONFIG=model_config,

@@ -24,8 +24,9 @@ class PlayOffOrchestrator:
         self.player2 = DeepNNAndMCTSAgent(self.config["PLAYER2"])
 
     def playOffPipeline(self):
-        player1_score = 0
-        player2_score = 0
+        player1_wins = 0
+        player2_wins = 0
+        draws = 0
 
         for position_num, position in enumerate(self.config["POSITIONS"]):
             # To properly test the agents let both of them play from player1's perspective
@@ -37,22 +38,20 @@ class PlayOffOrchestrator:
             )
 
             if winner_gm1 == GameState.RED:
-                player1_score += 1
+                player1_wins += 1
             elif winner_gm1 == GameState.YELLOW:
-                player2_score += 1
+                player2_wins += 1
             else:
-                player1_score += 0.5
-                player2_score += 0.5
+                draws += 1
 
             if winner_gm2 == GameState.RED:
-                player2_score += 1
+                player2_wins += 1
             elif winner_gm2 == GameState.YELLOW:
-                player1_score += 1
+                player1_wins += 1
             else:
-                player1_score += 0.5
-                player2_score += 0.5
+                draws
 
-        return (player1_score, player2_score)
+        return (player1_wins, draws, player2_wins)
 
     def playAGameFromPosition(self, position, player1, player2):
         state: GameState = position
@@ -63,12 +62,17 @@ class PlayOffOrchestrator:
             else:
                 action_info = player2.getActionWithInfo(state)
 
-            action = self.chooseBestAction(action_info["empirical_action_probs"])
+            action_mask = np.array(state.possible_moves_mask, dtype=np.bool)
+            action = self.chooseBestAction(
+                action_info["empirical_action_probs"], action_mask
+            )
+            # breakpoint()
             state = state.applyMove(action)
 
         return state.getWinner()
 
-    def chooseBestAction(self, empirical_action_probs):
+    def chooseBestAction(self, empirical_action_probs, action_mask):
+        empirical_action_probs[~action_mask] = -float("inf")
         best_action = np.argmax(empirical_action_probs)
 
         return best_action
@@ -138,7 +142,7 @@ class ArenaOrchestrator:
 
     def playOff(self, player1_iter, player2_iter, positions):
         playoff_config = self.getPlayOffConfig(player1_iter, player2_iter)
-        all_playoff_data = [0, 0]
+        all_playoff_data = [0, 0, 0]
         if self.config.get("USE_MULTIPROCESSING", False) == False:
             playoff_config["POSITIONS"] = positions
             # No multiprocessing
@@ -147,6 +151,7 @@ class ArenaOrchestrator:
             process_playoff_data = sp.playOffPipeline()
             all_playoff_data[0] += process_playoff_data[0]
             all_playoff_data[1] += process_playoff_data[1]
+            all_playoff_data[2] += process_playoff_data[2]
         else:
             # Use multiprocessing
             max_workers = self.config["N_MULTIPROCESS_GAME_RUNNERS"]
@@ -168,5 +173,6 @@ class ArenaOrchestrator:
                     process_playoff_data = future.result()
                     all_playoff_data[0] += process_playoff_data[0]
                     all_playoff_data[1] += process_playoff_data[1]
+                    all_playoff_data[2] += process_playoff_data[2]
 
         return all_playoff_data

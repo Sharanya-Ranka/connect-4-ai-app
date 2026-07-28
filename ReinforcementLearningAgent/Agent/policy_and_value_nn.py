@@ -89,32 +89,27 @@ class ConvolutionalPAndVNetwork(nn.Module):
         # Predicts the probability distribution over possible moves (columns).
         # It typically has fewer filters and then a final linear layer.
         self.policy_conv = nn.Conv2d(
-            num_filters, policy_head_filters, kernel_size=1
+            num_filters, 2, kernel_size=1
         )  # 1x1 conv to reduce channels
-        self.policy_bn = nn.BatchNorm2d(policy_head_filters)
-        # AdaptiveAvgPool2d reduces each feature map to a 1x1 spatial dimension,
-        # effectively performing global average pooling.
-        self.policy_pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.policy_bn = nn.BatchNorm2d(2)
         # Linear layer to output logits for each column (action)
-        self.policy_fc1 = nn.Linear(policy_head_filters, policy_head_filters // 2)
-        self.policy_fc2 = nn.Linear(policy_head_filters // 2, num_cols)
+        self.policy_fc1 = nn.Linear(
+            2 * num_rows * num_cols, 2 * num_cols
+        )  # policy_head_filters // 2)
+        self.policy_fc2 = nn.Linear(2 * num_cols, num_cols)
         self.policy_dropout = nn.Dropout(dropout_rate)
 
         # --- Value Head ---
         # Predicts the scalar value of the board state (e.g., win/loss/draw).
         # Similar structure to the policy head but outputs a single value.
         self.value_conv = nn.Conv2d(
-            num_filters, value_head_filters, kernel_size=1
+            num_filters, 1, kernel_size=1
         )  # 1x1 conv to reduce channels
-        self.value_bn = nn.BatchNorm2d(value_head_filters)
-        self.value_pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.value_bn = nn.BatchNorm2d(1)
+        # self.value_pool = nn.AdaptiveAvgPool2d((1, 1))
         # Linear layer to output a single value
-        self.value_fc1 = nn.Linear(
-            value_head_filters, value_head_filters // 2
-        )  # Intermediate linear layer
-        self.value_fc2 = nn.Linear(
-            value_head_filters // 2, 1
-        )  # Final linear layer for scalar output
+        self.value_fc1 = nn.Linear(num_rows * num_cols, 16)  # Intermediate linear layer
+        self.value_fc2 = nn.Linear(16, 1)  # Final linear layer for scalar output
         self.value_dropout = nn.Dropout(dropout_rate)
 
     def forwardInference(self, inp):
@@ -144,21 +139,17 @@ class ConvolutionalPAndVNetwork(nn.Module):
         # --- Policy Head Forward Pass ---
         # Apply 1x1 convolution, batch norm, and ReLU
         policy_x = F.relu(self.policy_bn(self.policy_conv(x)))
-        # Global average pooling
-        policy_x = self.policy_pool(policy_x)
         # Flatten for the linear layer (removes 1x1 spatial dimensions)
         policy_x = torch.flatten(policy_x, 1)
         # Apply dropout
         policy_x = self.policy_dropout(policy_x)
         # Final linear layer for policy logits
         policy_x = F.relu(self.policy_fc1(policy_x))
-        policy_op = self.policy_fc2(policy_x)  # Output logits
+        policy_op = self.policy_fc2(policy_x)
 
         # --- Value Head Forward Pass ---
         # Apply 1x1 convolution, batch norm, and ReLU
         value_x = F.relu(self.value_bn(self.value_conv(x)))
-        # Global average pooling
-        value_x = self.value_pool(value_x)
         # Flatten for the linear layers
         value_x = torch.flatten(value_x, 1)
         # Apply dropout

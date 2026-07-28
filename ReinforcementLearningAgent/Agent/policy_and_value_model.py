@@ -61,11 +61,13 @@ def saveModel(config):
 
 
 def preprocessState(state: GameState):
-    nn_state = np.zeros((NUM_INITIAL_CHANNELS, NUM_ROWS, NUM_COLS))
+    nn_state = np.zeros((2, NUM_ROWS, NUM_COLS))
+    other_player = (
+        GameState.RED if state.next_player == GameState.YELLOW else GameState.YELLOW
+    )
+    nn_state[0] = np.where(state.state == state.next_player, 1, 0)
+    nn_state[1] = np.where(state.state == other_player, 1, 0)
     row_inds, col_inds = np.indices((NUM_ROWS, NUM_COLS))
-    nn_state[state.state + 2, row_inds, col_inds] = 1
-    nn_state[0] = 1 if state.next_player == GameState.RED else 0
-    nn_state[1] = 1 if state.next_player == GameState.YELLOW else 0
     # breakpoint()
     torch_state = torch.tensor(nn_state, dtype=torch.float32)
     # breakpoint()
@@ -290,7 +292,7 @@ class PolicyAndValueTrainer:
         print(
             f"(Final) Train mse loss={train_mse_losses[-1]:.5f} Train ce loss={train_ce_losses[-1]:.5f} Eval mse loss={eval_mse_losses[-1]:.5f} Eval ce loss={eval_ce_losses[-1]:.5f}"
         )
-        # self.analyzeExamples(self.test_dataloader)
+        self.analyzeExamples(self.test_dataloader)
 
         # breakpoint()
 
@@ -383,7 +385,7 @@ class PolicyAndValueTrainer:
 
         sorted_losses = sorted(losses, key=lambda it: it[1] + it[2])
         print(f"Worst predictions")
-        for ind, mse, ce, p_sv, p_p in sorted_losses[-5:]:
+        for ind, mse, ce, p_sv, p_p in sorted_losses[-2:]:
             state, state_val, action_probs = dataloader.dataset.getOriginalItem(ind)
             print(f"{state}")
             print(f"State Val : Target={state_val:.5f} Pred={p_sv:.5f}")
@@ -393,7 +395,7 @@ class PolicyAndValueTrainer:
             print(f"MSE loss={mse:.5f} CE Loss={ce:.5f}")
 
         print(f"\n\nBest predictions")
-        for ind, mse, ce, p_sv, p_p in sorted_losses[:5]:
+        for ind, mse, ce, p_sv, p_p in sorted_losses[:2]:
             state, state_val, action_probs = dataloader.dataset.getOriginalItem(ind)
             print(f"{state}")
             print(f"State Val : Target={state_val:.5f} Pred={p_sv:.5f}")
@@ -404,7 +406,7 @@ class PolicyAndValueTrainer:
 
         print(f"\n\nMid predictions")
         half_ind = len(sorted_losses) // 2
-        for ind, mse, ce, p_sv, p_p in sorted_losses[half_ind : half_ind + 5]:
+        for ind, mse, ce, p_sv, p_p in sorted_losses[half_ind : half_ind + 2]:
             state, state_val, action_probs = dataloader.dataset.getOriginalItem(ind)
             print(f"{state}")
             print(f"State Val : Target={state_val:.5f} Pred={p_sv:.5f}")

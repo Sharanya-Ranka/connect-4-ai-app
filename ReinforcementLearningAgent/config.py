@@ -1,5 +1,5 @@
 # Global configs
-NUM_INITIAL_CHANNELS = 5
+NUM_INITIAL_CHANNELS = 2
 NUM_ROWS = 6
 NUM_COLS = 7
 
@@ -11,7 +11,7 @@ GLOBAL_CONFIG = dict(
 )
 
 
-N_MULTIPROCESS_GAME_RUNNERS = 2
+N_MULTIPROCESS_GAME_RUNNERS = 4
 # Self play config
 SELF_PLAY_CONFIG = dict(
     # Do you want to use multi-processing in the self-play data collection phase?
@@ -22,7 +22,7 @@ SELF_PLAY_CONFIG = dict(
     NUM_ITERATIONS=100,
     # Start from some iteration (the model checkpoint at the end of the previous iteration must exist)
     # Do not provide this if you want to start from scratch
-    # START_FROM_ITERATION=35,
+    # START_FROM_ITERATION=33,
     # How many (state, mcts_enhanced_action_priors, game_outcome). Too many datapoints will make all datapoints highly dependant. Too few will leave little training data
     NUM_DATAPOINTS_PER_GAME=10,
     # Data from how many previous iterations must be stored in the replay buffer? Ideally 1, but this leaves too little training data
@@ -32,7 +32,7 @@ SELF_PLAY_CONFIG = dict(
     # Actions are sampled from the provided distribution over actions modified by the temperature. Larger temperature pushes distributions towards uniform distribution (greater exploration), and smaller temperatures push it towards a point mass distribution (greater exploitation).
     # Temperature switches from initial to final based on the trigger ply (which move within a game)
     INITIAL_TEMPERATURE=5,
-    TRIGGER_PLY=7,
+    TRIGGER_PLY=3,
     FINAL_TEMPERATURE=0.1,
     **GLOBAL_CONFIG,
 )
@@ -42,7 +42,7 @@ AGENT_CONFIG = dict(
     # Coefficient for the uncertainty based prior. Increasing this value increases model prior based exploration bonus (a term that has a high value if very few vists have occured from that state, or if the model thinks it is a good action to take.)
     UCT_C_COEFF=2,
     # Number of MCTS playouts for each move in the game
-    NUM_PLAYOUTS=100,
+    NUM_PLAYOUTS=300,
     # Inference is usually performed for each request, but this can be quite slow and not utilize the GPU effectively. Batched inference queues the inference request and registers a "virtual loss" which is reversed when the INFERENCE_MIN_BATCH_SIZE is reached and the results are available
     USE_BATCHED_INFERENCE=True,
     INFERENCE_MIN_BATCH_SIZE=32,
@@ -53,7 +53,7 @@ AGENT_CONFIG = dict(
 MODEL_CONFIG = dict(
     NUM_CNN_FILTERS=16,
     KERNEL_SIZE=3,
-    NUM_RESIDUAL_BLOCKS=3,
+    NUM_RESIDUAL_BLOCKS=5,
     DROPOUT_RATE=0.2,
     POLICY_HEAD_FILTERS=8,
     VALUE_HEAD_FILTERS=8,
@@ -78,7 +78,8 @@ TRAINING_CONFIG = dict(
     # Howlarge should the test
     TEST_SIZE=0.1,
     # Learning rate for the training phase
-    LEARNING_RATE=0.0002,
+    LEARNING_RATE=0.01,
+    DECREASE_LR_EVERY_K_ITERATIONS=15,
     EPOCHS=5,
     BATCH_SIZE=32,
     USE_GPU=False,
@@ -86,11 +87,20 @@ TRAINING_CONFIG = dict(
 )
 
 ARENA_CONFIG = dict(
-    ITERATIONS_COMPARE=list([1, 2] + [5, 10, 15, 20, 30, 40]),
-    AGENT_CONFIG=AGENT_CONFIG,
+    ITERATIONS_COMPARE=list([1, 5] + [27, 28]),
+    AGENT_CONFIG=dict(
+        # Coefficient for the uncertainty based prior. Increasing this value increases model prior based exploration bonus (a term that has a high value if very few vists have occured from that state, or if the model thinks it is a good action to take.)
+        UCT_C_COEFF=2,
+        # Number of MCTS playouts for each move in the game
+        NUM_PLAYOUTS=40,
+        # Inference is usually performed for each request, but this can be quite slow and not utilize the GPU effectively. Batched inference queues the inference request and registers a "virtual loss" which is reversed when the INFERENCE_MIN_BATCH_SIZE is reached and the results are available
+        USE_BATCHED_INFERENCE=True,
+        INFERENCE_MIN_BATCH_SIZE=1,
+        **GLOBAL_CONFIG,
+    ),
     MODEL_CONFIG=MODEL_CONFIG,
     BASE_PATH=TRAINING_CONFIG["BASE_PATH"],
-    NUM_GAMES=20,
+    NUM_GAMES=50,
     BEGIN_POSITION_DEPTH=5,
     USE_MULTIPROCESSING=False,
     # N_MULTIPROCESS_GAME_RUNNERS=N_MULTIPROCESS_GAME_RUNNERS,

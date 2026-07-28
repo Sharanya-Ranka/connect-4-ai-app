@@ -132,6 +132,13 @@ class GameState:
         return [c for c in range(self.cols) if self.state[0, c] == self.EMPTY]
 
     @property
+    def possible_moves_mask(self):
+        """Returns a mask for possible moves (columns). True for possible False for invalid"""
+        return [
+            True if self.state[0, c] == self.EMPTY else False for c in range(self.cols)
+        ]
+
+    @property
     def next_player(self):
         """Returns the player index for the next move."""
         return self.RED if self.move_count % 2 == 0 else self.YELLOW
@@ -328,7 +335,7 @@ class MCTSGameState:
         self.visits = 0  # Visits to this state
 
         self.prior = np.array(
-            [1/num_moves] * num_moves, dtype=np.float32
+            [1 / num_moves] * num_moves, dtype=np.float32
         )  # Prior (action probabilities for children)
 
         self.is_leaf = True
