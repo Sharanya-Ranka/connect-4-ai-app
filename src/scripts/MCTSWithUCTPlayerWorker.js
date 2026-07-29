@@ -53,8 +53,10 @@ class MCTSWithUCTPlayerWorker {
   async getCurrentStateWinChance(current_state) {
     // console.log("getCurrentStateWinChance : Current state", current_state);
     this.updateCurrentState(current_state);
+    this.forgetUnrequiredStates(this.current_state);
     this.num_playouts_performed = 0;
     await this.performPlayouts();
+    console.log("Monitor current state", this.current_state)
     const win_chance = this.getUCTScoreForState(this.current_state, 0);
     // console.log("Win chance for move chosen=", win_chance * 100);
 
@@ -69,8 +71,8 @@ class MCTSWithUCTPlayerWorker {
 
   async getMoveAsync(current_state) {
     // await this.sleep(2 * 1000);
-    this.forgetUnrequiredStates();
     this.updateCurrentState(current_state);
+    this.forgetUnrequiredStates(this.current_state);
     // console.log("getMoveAsync : Current state", current_state);
     // const win_chance = this.getUCTScoreForState(this.current_state, 0);
     // console.log("Win chance for move chosen=", win_chance * 100);
@@ -119,8 +121,17 @@ class MCTSWithUCTPlayerWorker {
     }
   }
 
-  forgetUnrequiredStates() {
-    this.states_known.clear();
+  forgetUnrequiredStates(current_state) {
+    // Forget states that are not descendants of (or equal to) current state
+    let num_deletions = 0;
+    for (const [state_id, state] of this.states_known) {
+      if (!current_state.isAncestorOf(state)) {
+        this.states_known.delete(state_id);
+        num_deletions += 1;
+      }
+    }
+
+    console.log("Deleted %d states", num_deletions);
   }
 
   getMove(current_state) {
@@ -241,9 +252,12 @@ class MCTSWithUCTPlayerWorker {
     } else {
       // Should never come here if parent is not null
       const exploitation_factor = state.wins / state.plays;
-      const parent = this.getParentKnownState(state);
-      const exploration_factor =
-        uct_c_coeff * Math.sqrt(Math.log(parent.plays) / state.plays);
+      let exploration_factor = 0;
+      if(uct_c_coeff !== 0){
+        const parent = this.getParentKnownState(state);
+        exploration_factor =
+          uct_c_coeff * Math.sqrt(Math.log(parent.plays) / state.plays);
+      }
 
       // console.log("mcts_state; getUCTScore:", exploitation_factor + exploration_factor)
       return exploitation_factor + exploration_factor;

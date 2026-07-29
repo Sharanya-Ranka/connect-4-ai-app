@@ -1,4 +1,5 @@
 import { GameState } from "./GameState";
+import { createConvolutional4PAndVNetwork } from "./AlphaZeroLikeNN";
 
 function randomChoice(arr) {
   return arr[Math.floor(arr.length * Math.random())];
@@ -58,7 +59,7 @@ class AlphaZeroLikeWorker {
 
   intitializeNN(){
     // Initializes an already trained Neural Network (System only suitable for inference)
-    
+
   }
 
   async getCurrentStateWinChance(current_state) {
@@ -287,6 +288,7 @@ class AlphaZeroLikeWorker {
       test_child_id !== undefined && this.states_known.has(test_child_id);
 
     while (is_not_leaf) {
+        // For alphazero, this should be chooseBestChildToExplore / Expand (different from true best child)
       selection_state = this.chooseBestChild(selection_state, this.uct_c_coeff);
 
       // Get information about whether this new state is a leaf of not

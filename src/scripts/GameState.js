@@ -49,6 +49,19 @@ class GameState {
     return new GameState(this.max_rows, this.max_columns, new_moves);
   }
 
+
+  isAncestorOf(other_state){
+    if(other_state.all_moves.length < this.all_moves.length){
+      return false;
+    }
+    for (const [index, move] of this.all_moves.entries()) {
+      if(other_state.all_moves[index] !== move){
+        return false
+      }
+    }
+    return true;
+  }
+
   getChildIds() {
     const children_ids = this.getChildStates().map((state) => state.getId());
 
