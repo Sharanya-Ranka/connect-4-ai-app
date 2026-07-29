@@ -86,6 +86,11 @@ class DeepNNAndMCTSAgent:
                     value, prior = self.state_cache[child.state]
                     child.prior = prior
                     child.v = value
+                elif child.isTerminal():
+                    # Terminal states have no priors, but values are known (depending on win/loss)
+                    child.v = 1 if child.getWinner() != child.next_player else -1
+                    # A default, never-to-be-used prior is already set for every state
+                    self.state_cache[child.state] = (child.v, child.prior)
                 else:
                     to_evaluate_lazily.append(child)
 
@@ -132,7 +137,7 @@ class DeepNNAndMCTSAgent:
             ):
                 mcts_state: MCTSGameState
                 mcts_state.prior = ap
-                mcts_state.v =  sv
+                mcts_state.v = sv
 
                 self.state_cache[mcts_state.state] = (sv, ap)
 
@@ -209,6 +214,8 @@ class DeepNNAndMCTSAgent:
         return state_value
 
     def convertVisitsToEmpiricalProbabilities(self, state):
+        if state.children == None:
+            breakpoint()
         child_visits = np.array(
             [
                 child.visits if child != None else 0

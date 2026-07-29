@@ -89,14 +89,14 @@ class ConvolutionalPAndVNetwork(nn.Module):
         # Predicts the probability distribution over possible moves (columns).
         # It typically has fewer filters and then a final linear layer.
         self.policy_conv = nn.Conv2d(
-            num_filters, 2, kernel_size=1
+            num_filters, 4, kernel_size=1
         )  # 1x1 conv to reduce channels
-        self.policy_bn = nn.BatchNorm2d(2)
+        self.policy_bn = nn.BatchNorm2d(4)
         # Linear layer to output logits for each column (action)
         self.policy_fc1 = nn.Linear(
-            2 * num_rows * num_cols, 2 * num_cols
+            4 * num_rows * num_cols, 4 * num_cols
         )  # policy_head_filters // 2)
-        self.policy_fc2 = nn.Linear(2 * num_cols, num_cols)
+        self.policy_fc2 = nn.Linear(4 * num_cols, num_cols)
         self.policy_dropout = nn.Dropout(dropout_rate)
 
         # --- Value Head ---

@@ -11,7 +11,7 @@ GLOBAL_CONFIG = dict(
 )
 
 
-N_MULTIPROCESS_GAME_RUNNERS = 12
+N_MULTIPROCESS_GAME_RUNNERS = 4
 # Self play config
 SELF_PLAY_CONFIG = dict(
     # Do you want to use multi-processing in the self-play data collection phase?
@@ -22,13 +22,13 @@ SELF_PLAY_CONFIG = dict(
     NUM_ITERATIONS=100,
     # Start from some iteration (the model checkpoint at the end of the previous iteration must exist)
     # Do not provide this if you want to start from scratch
-    # START_FROM_ITERATION=30,
+    START_FROM_ITERATION=45,
     # How many (state, mcts_enhanced_action_priors, game_outcome). Too many datapoints will make all datapoints highly dependant. Too few will leave little training data
-    NUM_DATAPOINTS_PER_GAME=10,
+    NUM_DATAPOINTS_PER_GAME=5,
     # Data from how many previous iterations must be stored in the replay buffer? Ideally 1, but this leaves too little training data
-    NUM_LEGACY_ITERATIONS_DATA=1,
+    NUM_LEGACY_ITERATIONS_DATA=8,
     # Number of games to play per iteration. If multiple processes are being used, this will be divided among the processes
-    GAMES_PER_ITERATION=20 * N_MULTIPROCESS_GAME_RUNNERS,
+    GAMES_PER_ITERATION=5 * N_MULTIPROCESS_GAME_RUNNERS,
     # Actions are sampled from the provided distribution over actions modified by the temperature. Larger temperature pushes distributions towards uniform distribution (greater exploration), and smaller temperatures push it towards a point mass distribution (greater exploitation).
     # Temperature switches from initial to final based on the trigger ply (which move within a game)
     INITIAL_TEMPERATURE=2,
@@ -42,22 +42,22 @@ AGENT_CONFIG = dict(
     # Coefficient for the uncertainty based prior. Increasing this value increases model prior based exploration bonus (a term that has a high value if very few vists have occured from that state, or if the model thinks it is a good action to take.)
     UCT_C_COEFF=2,
     # Number of MCTS playouts for each move in the game
-    NUM_PLAYOUTS=300,
+    NUM_PLAYOUTS=1000,
     # Inference is usually performed for each request, but this can be quite slow and not utilize the GPU effectively. Batched inference queues the inference request and registers a "virtual loss" which is reversed when the INFERENCE_MIN_BATCH_SIZE is reached and the results are available
     USE_BATCHED_INFERENCE=True,
-    INFERENCE_MIN_BATCH_SIZE=32,
+    INFERENCE_MIN_BATCH_SIZE=8,
     **GLOBAL_CONFIG,
 )
 
 # Model config ConvolutionalPAndV
 MODEL_CONFIG = dict(
-    NUM_CNN_FILTERS=16,
+    NUM_CNN_FILTERS=64,
     KERNEL_SIZE=3,
-    NUM_RESIDUAL_BLOCKS=5,
+    NUM_RESIDUAL_BLOCKS=3,
     DROPOUT_RATE=0.2,
     POLICY_HEAD_FILTERS=8,
     VALUE_HEAD_FILTERS=8,
-    USE_GPU=True,
+    USE_GPU=False,
     **GLOBAL_CONFIG,
 )
 
@@ -78,16 +78,17 @@ TRAINING_CONFIG = dict(
     # Howlarge should the test
     TEST_SIZE=0.1,
     # Learning rate for the training phase
-    LEARNING_RATE=0.01,
+    LEARNING_RATE=0.001,
     DECREASE_LR_EVERY_K_ITERATIONS=20,
     EPOCHS=2,
     BATCH_SIZE=32,
-    USE_GPU=True,
+    USE_GPU=False,
     BASE_PATH="ModelCheckpoints/debug_model",
 )
 
 ARENA_CONFIG = dict(
-    ITERATIONS_COMPARE=list([20, 30] + [34, 36]),
+    PRINT_GAMES=True,
+    ITERATIONS_COMPARE=tuple([[1], [59]]),
     AGENT_CONFIG=dict(
         # Coefficient for the uncertainty based prior. Increasing this value increases model prior based exploration bonus (a term that has a high value if very few vists have occured from that state, or if the model thinks it is a good action to take.)
         UCT_C_COEFF=2,
@@ -95,23 +96,23 @@ ARENA_CONFIG = dict(
         NUM_PLAYOUTS=40,
         # Inference is usually performed for each request, but this can be quite slow and not utilize the GPU effectively. Batched inference queues the inference request and registers a "virtual loss" which is reversed when the INFERENCE_MIN_BATCH_SIZE is reached and the results are available
         USE_BATCHED_INFERENCE=True,
-        INFERENCE_MIN_BATCH_SIZE=1,
+        INFERENCE_MIN_BATCH_SIZE=4,
         **GLOBAL_CONFIG,
     ),
     MODEL_CONFIG=MODEL_CONFIG,
     BASE_PATH=TRAINING_CONFIG["BASE_PATH"],
-    NUM_GAMES=2,
-    BEGIN_POSITION_DEPTH=5,
+    NUM_GAMES=50,
+    BEGIN_POSITION_DEPTH=3,
     USE_MULTIPROCESSING=False,
     # N_MULTIPROCESS_GAME_RUNNERS=N_MULTIPROCESS_GAME_RUNNERS,
 )
 
 TEST_CONFIG = dict(
-    TEST="Accuracy",
+    TEST="BatchedInferenceAccuracy",
     # Test specifics
-    BATCH_SIZE=32,
-    TEST_CASE_SET="DEFAULT_TEST_CASES",
-    MODEL_WEIGHTS_SOURCE="ModelCheckpoints/debug_model/iteration_33.pth",
+    INFERENCE_BATCH_SIZES_TO_COMPARE=[1, 8, 32],
+    TEST_CASE_SET="RANDOM_TEST_CASES",
+    MODEL_WEIGHTS_SOURCE="ModelCheckpoints/debug_model/iteration_0.pth",
 )
 
 SAVE_CONFIG = dict(
@@ -131,6 +132,7 @@ ONNX_SAVE_PIPELINE = "ONNXSavePipeline"
 PIPELINE = SELF_PLAY_AND_TRAINING_PIPELINE
 # ARENA_PIPELINE
 # SELF_PLAY_AND_TRAINING_PIPELINE
+# MODEL_VERIFICATION_PIPELINE
 
 
 def getAgentFullConfig():

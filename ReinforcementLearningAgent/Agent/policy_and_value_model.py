@@ -256,7 +256,7 @@ class PolicyAndValueTrainer:
         # print(f"True={true}\nPred={pred}")
         # print(f"Debug MSE loss={debug_mse_loss}\nDebug CE loss={debug_ce_loss}\n")
         # breakpoint()
-        return mse_loss, ce_loss
+        return 0.1 * mse_loss, ce_loss
 
     def train(self):
         # debugObj.updateEpoch(setZero=True)
@@ -292,7 +292,7 @@ class PolicyAndValueTrainer:
         print(
             f"(Final) Train mse loss={train_mse_losses[-1]:.5f} Train ce loss={train_ce_losses[-1]:.5f} Eval mse loss={eval_mse_losses[-1]:.5f} Eval ce loss={eval_ce_losses[-1]:.5f}"
         )
-        # self.analyzeExamples(self.test_dataloader)
+        self.analyzeExamples(self.test_dataloader)
 
         # breakpoint()
 

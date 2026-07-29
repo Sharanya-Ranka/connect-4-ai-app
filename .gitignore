@@ -20,6 +20,7 @@ Screenshot 2024-08-30 014850.jpg
 
 # model checkpoints
 ModelCheckpoints/
+ModelCheckpoints.zip
 
 # pycache
 __pycache__/

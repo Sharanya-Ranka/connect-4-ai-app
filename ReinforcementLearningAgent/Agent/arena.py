@@ -45,6 +45,7 @@ class PlayOffOrchestrator:
         player1_wins_printed = 0
         player2_wins_printed = 0
         WINS_TO_PRINT = 1
+        print_games = self.config.get("PRINT_GAMES", False)
 
         # breakpoint()
 
@@ -65,12 +66,12 @@ class PlayOffOrchestrator:
 
             if winner_gm1 == GameState.RED:
                 player1_wins += 1
-                if player1_wins_printed < WINS_TO_PRINT:
+                if print_games and player1_wins_printed < WINS_TO_PRINT:
                     player1_wins_printed += 1
                     self.printGame(gm1_prog, player1_id, player2_id, GameState.RED)
             elif winner_gm1 == GameState.YELLOW:
                 player2_wins += 1
-                if player2_wins_printed < WINS_TO_PRINT:
+                if print_games and player2_wins_printed < WINS_TO_PRINT:
                     player2_wins_printed += 1
                     self.printGame(gm1_prog, player1_id, player2_id, GameState.YELLOW)
             else:
@@ -78,16 +79,16 @@ class PlayOffOrchestrator:
 
             if winner_gm2 == GameState.RED:
                 player2_wins += 1
-                if player2_wins_printed < WINS_TO_PRINT:
+                if print_games and player2_wins_printed < WINS_TO_PRINT:
                     player2_wins_printed += 1
                     self.printGame(gm2_prog, player2_id, player1_id, GameState.RED)
             elif winner_gm2 == GameState.YELLOW:
                 player1_wins += 1
-                if player1_wins_printed < WINS_TO_PRINT:
+                if print_games and player1_wins_printed < WINS_TO_PRINT:
                     player1_wins_printed += 1
                     self.printGame(gm2_prog, player2_id, player1_id, GameState.YELLOW)
             else:
-                draws
+                draws += 1
 
         return (player1_wins, draws, player2_wins)
 
@@ -135,9 +136,13 @@ class ArenaOrchestrator:
         )
 
         player_model_iterations = self.config["ITERATIONS_COMPARE"]
-        pairings_iterations = list(
-            itertools.product(player_model_iterations[:2], player_model_iterations[2:])
+        pairings_iterations = itertools.product(
+            player_model_iterations[0], player_model_iterations[1]
         )
+
+        # list(
+        #     itertools.product(player_model_iterations[:2], player_model_iterations[2:])
+        # )
         # Successive pairing (k with k+2)
         # list(
         #     zip(player_model_iterations[:-2], player_model_iterations[2:])
@@ -165,6 +170,7 @@ class ArenaOrchestrator:
         )
 
         playoff_config = dict(
+            PRINT_GAMES=self.config["PRINT_GAMES"],
             PLAYER1=dict(
                 AGENT_CONFIG=self.agent_config.copy(),
                 MODEL_CONFIG=pl1_model_config,

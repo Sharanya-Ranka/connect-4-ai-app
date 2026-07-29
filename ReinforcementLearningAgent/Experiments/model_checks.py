@@ -3,9 +3,16 @@ import torch
 
 from Agent.policy_and_value_model import PolicyAndValueFunction
 from config import MODEL_CONFIG, AGENT_CONFIG, TEST_CONFIG
-from Experiments.test_cases import DEFAULT_TEST_CASES, RANDOM_TEST_CASES
+from Experiments.test_cases import (
+    DEFAULT_TEST_CASES,
+    RANDOM_TEST_CASES,
+    getRandomTestCases,
+)
 from GameImplementation.game_state import GameState
 from Agent.deepnn_and_mcts_agent import DeepNNAndMCTSAgent
+import functools
+import itertools
+import numpy as np
 
 
 def getStateValuePerspective(state):
@@ -18,7 +25,7 @@ def getStateValuePerspective(state):
 class ModelTesting:
     def __init__(self, config):
         self.config = config
-        self.test_config = config #["TEST_CONFIG"]
+        self.test_config = config  # ["TEST_CONFIG"]
 
     def performTest(self):
         if self.test_config["TEST"] == "Accuracy":
@@ -30,7 +37,8 @@ class ModelTesting:
         elif self.test_config["TEST"] == "BatchedInference":
             self.testBatchedInferenceSetUp()
             self.testBatchedInference()
-            
+        elif self.test_config["TEST"] == "BatchedInferenceAccuracy":
+            self.testBatchedInferenceAccuracy()
 
     def testAccuracySetUp(self):
         model_config = MODEL_CONFIG.copy()
@@ -44,7 +52,10 @@ class ModelTesting:
         self.agent = DeepNNAndMCTSAgent(config)
 
     def getTestCases(self):
-        return globals()[self.test_config["TEST_CASE_SET"]]
+        if self.test_config["TEST_CASE_SET"] == "DEFAULT_TEST_CASES":
+            return DEFAULT_TEST_CASES
+        elif self.test_config["TEST_CASE_SET"] == "RANDOM_TEST_CASES":
+            return getRandomTestCases(20)
 
     def testAccuracy(self):
         test_cases = self.getTestCases()
@@ -64,7 +75,7 @@ class ModelTesting:
         if not game_state.isTerminal():
             action_info = self.agent.getActionWithInfo(game_state)
         else:
-            action_info = {'empirical_action_probs' : []}
+            action_info = {"empirical_action_probs": []}
 
         sv_perspective = getStateValuePerspective(game_state)
         action_probabilities_str = [f"{prob:.3f}" for prob in action_probabilities]
@@ -72,7 +83,8 @@ class ModelTesting:
             f"{prob:.3f}" for prob in action_info["empirical_action_probs"]
         ]
         action_probs_diff_str = [
-            f"{prob:.3f}" for prob in action_info["empirical_action_probs"] - action_probabilities
+            f"{prob:.3f}"
+            for prob in action_info["empirical_action_probs"] - action_probabilities
         ]
 
         print(
@@ -128,7 +140,10 @@ class ModelTesting:
 
         test_cases_endtime = time.time()
 
-        return first_testcase_endtime - test_cases_starttime, test_cases_endtime - first_testcase_endtime
+        return (
+            first_testcase_endtime - test_cases_starttime,
+            test_cases_endtime - first_testcase_endtime,
+        )
 
     def testBatchedInferenceSetUp(self):
         model_config = MODEL_CONFIG.copy()
@@ -141,21 +156,84 @@ class ModelTesting:
         config = model_config
         self.model_fn = PolicyAndValueFunction(config)
 
-    def testBatchedInference(self):
-        batch_size = self.config.get('BATCH_SIZE', 16)
+    def testBatchedInferenceAccuracy(self):
         test_cases = self.getTestCases()
-        print(f"Testing batching with size={batch_size} Num of test cases={len(test_cases)}")
+
+        model_config = MODEL_CONFIG.copy()
+        agent_config = AGENT_CONFIG.copy()
+
+        model_config.update(
+            dict(MODEL_WEIGHTS_SOURCE=self.test_config["MODEL_WEIGHTS_SOURCE"])
+        )
+        batch_sizes_to_compare = self.test_config["INFERENCE_BATCH_SIZES_TO_COMPARE"]
+        predictions = {}
+
+        for batch_size in batch_sizes_to_compare:
+            print(f"On batch size={batch_size}")
+            this_agent_config = agent_config.copy()
+            this_agent_config["INFERENCE_MIN_BATCH_SIZE"] = batch_size
+            config = dict(MODEL_CONFIG=model_config, AGENT_CONFIG=this_agent_config)
+            agent = DeepNNAndMCTSAgent(config)
+
+            this_agent_predictions = []
+
+            for tc in test_cases:
+                game_state = tc["GAME_STATE"]
+                action_info = agent.getActionWithInfo(game_state)
+                empirical_probs = action_info["empirical_action_probs"]
+                this_agent_predictions.append(list(empirical_probs))
+
+            # breakpoint()
+
+            predictions[batch_size] = np.array(
+                functools.reduce(lambda x, y: x + y, this_agent_predictions, [])
+            )
+
+        batch_combinatons = itertools.combinations(batch_sizes_to_compare, 2)
+
+        def compareProbabilities(p1: np.ndarray, p2: np.ndarray):
+            diff = np.abs(p1 - p2)
+            hist, _ = np.histogram(diff, bins=[0, 0.01, 0.05, 0.10, 0.50, 1])
+            hist = hist / hist.sum()
+            # breakpoint()
+
+            return (np.min(diff), np.max(diff), np.mean(diff), hist)
+
+        for bs1, bs2 in batch_combinatons:
+            print(f"Comparing inference batch sizes {bs1} and {bs2}")
+            minp, maxp, meanp, hist = compareProbabilities(
+                predictions[bs1], predictions[bs2]
+            )
+
+            hist_str = f"(0-1%){hist[0]:.2f} (1-5%){hist[1]:.2f} (5-10%){hist[2]:.2f} (10-50%){hist[3]:.2f} (50-100%){hist[4]:.2f}"
+            print(f"Min diff={minp:.3f} Max diff={maxp:.3f} Mean diff={meanp:.3f}")
+            print(f"Histogram={hist_str}")
+            print()
+
+    def testBatchedInference(self):
+        batch_size = self.config.get("BATCH_SIZE", 16)
+        test_cases = self.getTestCases()
+        print(
+            f"Testing batching with size={batch_size} Num of test cases={len(test_cases)}"
+        )
 
         # Test batched inference speed
         batched_starttime = time.time()
         for batch_start_ind in range(0, len(test_cases), batch_size):
-            game_states = [test_cases[i]["GAME_STATE"] for i in range(batch_start_ind, min(batch_start_ind + batch_size, len(test_cases)))]
+            game_states = [
+                test_cases[i]["GAME_STATE"]
+                for i in range(
+                    batch_start_ind, min(batch_start_ind + batch_size, len(test_cases))
+                )
+            ]
             retval = self.model_fn._evaluateFunctionBatched(game_states)
         batched_endtime = time.time()
         batched_duration = batched_endtime - batched_starttime
         # Print the batched execution results, including total and average time
-        print(f"Batched execution total = {batched_duration:.4f}s | Average = {batched_duration / len(test_cases):.6f}s")
-        
+        print(
+            f"Batched execution total = {batched_duration:.4f}s | Average = {batched_duration / len(test_cases):.6f}s"
+        )
+
         # Test individual inference speed
         individual_starttime = time.time()
         for i, test_case in enumerate(test_cases):
@@ -164,8 +242,9 @@ class ModelTesting:
         individual_endtime = time.time()
         individual_duration = individual_endtime - individual_starttime
         # Print the individual execution results, including total and average time
-        print(f"Individual execution total = {individual_duration:.4f}s | Average = {individual_duration / len(test_cases):.6f}s")
-        
+        print(
+            f"Individual execution total = {individual_duration:.4f}s | Average = {individual_duration / len(test_cases):.6f}s"
+        )
 
     # def testGPUExec
 
