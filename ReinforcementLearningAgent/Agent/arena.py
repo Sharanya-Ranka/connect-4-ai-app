@@ -3,12 +3,14 @@ import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import reduce
 import itertools
+import copy
 
 
 import numpy as np
 import re
 
 from Agent.deepnn_and_mcts_agent import DeepNNAndMCTSAgent
+from Experiments.test_players import UniformPriorMCTSAgent, RandomAgent
 
 from GameImplementation.game_state import GameState
 from utilities import PositionProvider
@@ -19,10 +21,20 @@ class PlayOffOrchestrator:
         self.config = config
         self.initializeAgents()
 
+    def _agentFactory(self, agent_config):
+        # breakpoint()
+        if agent_config["AGENT_TYPE"] == "DEEPNN_AND_MCTS_AGENT":
+            return DeepNNAndMCTSAgent(agent_config)
+        elif agent_config["AGENT_TYPE"] == "UNIFORM_PRIOR_MCTS_AGENT":
+            return UniformPriorMCTSAgent(agent_config)
+        elif agent_config["AGENT_TYPE"] == "RANDOM_AGENT":
+            return RandomAgent(agent_config)
+
     def initializeAgents(self):
         # Config should consist of atleast the model config and the agent config
-        self.player1 = DeepNNAndMCTSAgent(self.config["PLAYER1"])
-        self.player2 = DeepNNAndMCTSAgent(self.config["PLAYER2"])
+        self.player1 = self._agentFactory(self.config["PLAYER1"])
+        self.player2 = self._agentFactory(self.config["PLAYER2"])
+        # breakpoint()
 
     def printGame(self, game_progression, player1_id, player2_id, player_won):
         win_player_id = player1_id if player_won == GameState.RED else player2_id
@@ -49,11 +61,11 @@ class PlayOffOrchestrator:
 
         # breakpoint()
 
-        player1_id = self.config["PLAYER1"]["MODEL_CONFIG"]["MODEL_WEIGHTS_SOURCE"]
-        player2_id = self.config["PLAYER2"]["MODEL_CONFIG"]["MODEL_WEIGHTS_SOURCE"]
+        player1_id = self.config["PLAYER1"]["NAME"]
+        player2_id = self.config["PLAYER2"]["NAME"]
 
-        player1_id = re.search(r"(iteration_\d+)\.pth", player1_id).group(1)
-        player2_id = re.search(r"(iteration_\d+)\.pth", player2_id).group(1)
+        # player1_id = re.search(r"(iteration_\d+)\.pth", player1_id).group(1)
+        # player2_id = re.search(r"(iteration_\d+)\.pth", player2_id).group(1)
 
         for position_num, position in enumerate(self.config["POSITIONS"]):
             # To properly test the agents let both of them play from player1's perspective
@@ -127,67 +139,91 @@ def playOffRunnerFunction(config):
 class ArenaOrchestrator:
     def __init__(self, config):
         self.config = config
-        self.model_config = config["MODEL_CONFIG"]
-        self.agent_config = config["AGENT_CONFIG"]
 
     def overallPipeline(self):
+        assert (
+            self.config["NUM_GAMES"] % 2 == 0
+        ), "Num games must be even (we use 1/2 positions with 2 games per position, with players swapped)"
         positions = PositionProvider.generateStartingPositions(
             self.config["BEGIN_POSITION_DEPTH"], self.config["NUM_GAMES"] // 2
         )
 
-        player_model_iterations = self.config["ITERATIONS_COMPARE"]
-        pairings_iterations = itertools.product(
-            player_model_iterations[0], player_model_iterations[1]
+        player1_configs = self._getPlayerConfigs(
+            self.config["PLAYER1_BASE_CONFIG"], self.config["PLAYER1_VARIANTS"]
         )
+        player2_configs = self._getPlayerConfigs(
+            self.config["PLAYER2_BASE_CONFIG"], self.config["PLAYER2_VARIANTS"]
+        )
+        # breakpoint()
 
-        # list(
-        #     itertools.product(player_model_iterations[:2], player_model_iterations[2:])
-        # )
-        # Successive pairing (k with k+2)
-        # list(
-        #     zip(player_model_iterations[:-2], player_model_iterations[2:])
-        # )
+        pairings = itertools.product(player1_configs, player2_configs)
 
-        # All combinations
-        # itertools.combinations(
-        #     self.config["ITERATIONS_COMPARE"], 2
-        # )
-
-        for pl1, pl2 in pairings_iterations:
+        for pl1, pl2 in pairings:
             playoff_data = self.playOff(pl1, pl2, positions)
-            print(f"Playoff player {pl1} vs player {pl2}")
+            print(f"Playoff player {pl1['NAME']} vs player {pl2['NAME']}")
             print(f"Num games={self.config['NUM_GAMES']} WinStats={playoff_data}")
 
-    def getPlayOffConfig(self, player1_iter, player2_iter):
-        pl1_model_config = self.model_config.copy()
-        pl1_model_config["MODEL_WEIGHTS_SOURCE"] = self.getModelPathForIteration(
-            player1_iter
-        )
+    def _getPlayerConfigs(self, base_config, variants):
+        all_configs = []
 
-        pl2_model_config = self.model_config.copy()
-        pl2_model_config["MODEL_WEIGHTS_SOURCE"] = self.getModelPathForIteration(
-            player2_iter
-        )
+        if not variants:
+            all_configs.append(copy.deepcopy(base_config))
+            return all_configs
 
+        for iteration_variant in variants["ITERATIONS"]:
+            config = copy.deepcopy(base_config)
+            config["MODEL_CONFIG"]["MODEL_WEIGHTS_SOURCE"] = (
+                self.getModelPathForIteration(
+                    base_config["BASE_PATH"], iteration_variant
+                )
+            )
+            config["NAME"] = config["NAME"] + f"_iteration{iteration_variant}"
+
+            all_configs.append(config)
+
+        return all_configs
+
+    def getPlayOffConfig(self, player1_config, player2_config):
         playoff_config = dict(
             PRINT_GAMES=self.config["PRINT_GAMES"],
-            PLAYER1=dict(
-                AGENT_CONFIG=self.agent_config.copy(),
-                MODEL_CONFIG=pl1_model_config,
-            ),
-            PLAYER2=dict(
-                AGENT_CONFIG=self.agent_config.copy(),
-                MODEL_CONFIG=pl2_model_config,
-            ),
+            PLAYER1=player1_config,
+            PLAYER2=player2_config,
         )
 
         return playoff_config
 
-    def getModelPathForIteration(self, iteration=0):
-        return os.path.join(self.config["BASE_PATH"], f"iteration_{iteration}.pth")
+    def getModelPathForIteration(self, base_path, iteration=0):
+        return os.path.join(base_path, f"iteration_{iteration}.pth")
 
-    def playOff(self, player1_iter, player2_iter, positions):
-        playoff_config = self.getPlayOffConfig(player1_iter, player2_iter)
+    # def playOffMultiProcess(self, pairings, positions):
+    #     playoff_configs = [self.getPlayOffConfig(p1_cfg, p2_cfg) for p1_cfg, p2_cfg in pairings]
+    #     all_playoff_data = [0, 0, 0]
+
+    #     max_workers = self.config["N_MULTIPROCESS_GAME_RUNNERS"]
+
+    #     with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    #         futures = set()
+    #         positions_per_worker = int(np.ceil(len(positions) / max_workers))
+    #         for worker_ind in range(max_workers):
+    #             cur_playoff_config = playoff_config.copy()
+    #             start_pos = worker_ind * positions_per_worker
+    #             end_pos = start_pos + positions_per_worker
+    #             # print(start_pos, end_pos)
+    #             cur_playoff_config["POSITIONS"] = positions[start_pos:end_pos]
+    #             futures.add(
+    #                 executor.submit(playOffRunnerFunction, cur_playoff_config)
+    #             )
+
+    #         for future in as_completed(futures):
+    #             process_playoff_data = future.result()
+    #             all_playoff_data[0] += process_playoff_data[0]
+    #             all_playoff_data[1] += process_playoff_data[1]
+    #             all_playoff_data[2] += process_playoff_data[2]
+
+    #     return all_playoff_data
+
+    def playOff(self, player1_config, player2_config, positions):
+        playoff_config = self.getPlayOffConfig(player1_config, player2_config)
         all_playoff_data = [0, 0, 0]
         if self.config.get("USE_MULTIPROCESSING", False) == False:
             playoff_config["POSITIONS"] = positions
@@ -201,22 +237,22 @@ class ArenaOrchestrator:
         else:
             # Use multiprocessing
             max_workers = self.config["N_MULTIPROCESS_GAME_RUNNERS"]
-
             with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                futures = set()
-                positions_per_worker = int(np.ceil(len(positions) / max_workers))
-                for worker_ind in range(max_workers):
+                future_to_pos = {}
+                # breakpoint()
+                for pos in positions:
                     cur_playoff_config = playoff_config.copy()
-                    start_pos = worker_ind * positions_per_worker
-                    end_pos = start_pos + positions_per_worker
-                    # print(start_pos, end_pos)
-                    cur_playoff_config["POSITIONS"] = positions[start_pos:end_pos]
-                    futures.add(
-                        executor.submit(playOffRunnerFunction, cur_playoff_config)
-                    )
+                    cur_playoff_config["POSITIONS"] = [pos]  # Send single position
 
-                for future in as_completed(futures):
+                    future = executor.submit(playOffRunnerFunction, cur_playoff_config)
+                    future_to_pos[future] = pos
+
+                # 2. Hand over results to downstream aggregation immediately as each finishes
+                for future in as_completed(future_to_pos):
+                    print(f"Completed a future")
                     process_playoff_data = future.result()
+
+                    # Immediate processing/handover
                     all_playoff_data[0] += process_playoff_data[0]
                     all_playoff_data[1] += process_playoff_data[1]
                     all_playoff_data[2] += process_playoff_data[2]

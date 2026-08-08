@@ -11,7 +11,7 @@ GLOBAL_CONFIG = dict(
 )
 
 
-N_MULTIPROCESS_GAME_RUNNERS = 4
+N_MULTIPROCESS_GAME_RUNNERS = 5
 # Self play config
 SELF_PLAY_CONFIG = dict(
     # Do you want to use multi-processing in the self-play data collection phase?
@@ -22,11 +22,11 @@ SELF_PLAY_CONFIG = dict(
     NUM_ITERATIONS=100,
     # Start from some iteration (the model checkpoint at the end of the previous iteration must exist)
     # Do not provide this if you want to start from scratch
-    START_FROM_ITERATION=45,
+    # START_FROM_ITERATION=45,
     # How many (state, mcts_enhanced_action_priors, game_outcome). Too many datapoints will make all datapoints highly dependant. Too few will leave little training data
     NUM_DATAPOINTS_PER_GAME=5,
     # Data from how many previous iterations must be stored in the replay buffer? Ideally 1, but this leaves too little training data
-    NUM_LEGACY_ITERATIONS_DATA=8,
+    NUM_LEGACY_ITERATIONS_DATA=4,
     # Number of games to play per iteration. If multiple processes are being used, this will be divided among the processes
     GAMES_PER_ITERATION=5 * N_MULTIPROCESS_GAME_RUNNERS,
     # Actions are sampled from the provided distribution over actions modified by the temperature. Larger temperature pushes distributions towards uniform distribution (greater exploration), and smaller temperatures push it towards a point mass distribution (greater exploitation).
@@ -40,12 +40,12 @@ SELF_PLAY_CONFIG = dict(
 # Agent config
 AGENT_CONFIG = dict(
     # Coefficient for the uncertainty based prior. Increasing this value increases model prior based exploration bonus (a term that has a high value if very few vists have occured from that state, or if the model thinks it is a good action to take.)
-    UCT_C_COEFF=2,
+    UCT_C_COEFF=0.5,
     # Number of MCTS playouts for each move in the game
     NUM_PLAYOUTS=1000,
     # Inference is usually performed for each request, but this can be quite slow and not utilize the GPU effectively. Batched inference queues the inference request and registers a "virtual loss" which is reversed when the INFERENCE_MIN_BATCH_SIZE is reached and the results are available
     USE_BATCHED_INFERENCE=True,
-    INFERENCE_MIN_BATCH_SIZE=8,
+    INFERENCE_MIN_BATCH_SIZE=16,
     **GLOBAL_CONFIG,
 )
 
@@ -53,7 +53,7 @@ AGENT_CONFIG = dict(
 MODEL_CONFIG = dict(
     NUM_CNN_FILTERS=64,
     KERNEL_SIZE=3,
-    NUM_RESIDUAL_BLOCKS=3,
+    NUM_RESIDUAL_BLOCKS=5,
     DROPOUT_RATE=0.2,
     POLICY_HEAD_FILTERS=8,
     VALUE_HEAD_FILTERS=8,
@@ -78,22 +78,63 @@ TRAINING_CONFIG = dict(
     # Howlarge should the test
     TEST_SIZE=0.1,
     # Learning rate for the training phase
-    LEARNING_RATE=0.001,
+    LEARNING_RATE=0.01,
     DECREASE_LR_EVERY_K_ITERATIONS=20,
-    EPOCHS=2,
+    EPOCHS=5,
     BATCH_SIZE=32,
     USE_GPU=False,
     BASE_PATH="ModelCheckpoints/debug_model",
 )
 
-ARENA_CONFIG = dict(
-    PRINT_GAMES=True,
-    ITERATIONS_COMPARE=tuple([[1], [59]]),
+
+RANDOM_PLAYER_BASE_CONFIG = dict(
+    NAME="random",
+    AGENT_TYPE="RANDOM_AGENT",
+)
+
+DEEPNN_MCTS_BASE_CONFIG = dict(
+    NAME="deepnn_mcts_bs32",
+    AGENT_TYPE="DEEPNN_AND_MCTS_AGENT",
     AGENT_CONFIG=dict(
         # Coefficient for the uncertainty based prior. Increasing this value increases model prior based exploration bonus (a term that has a high value if very few vists have occured from that state, or if the model thinks it is a good action to take.)
         UCT_C_COEFF=2,
         # Number of MCTS playouts for each move in the game
-        NUM_PLAYOUTS=40,
+        NUM_PLAYOUTS=1000,
+        # Inference is usually performed for each request, but this can be quite slow and not utilize the GPU effectively. Batched inference queues the inference request and registers a "virtual loss" which is reversed when the INFERENCE_MIN_BATCH_SIZE is reached and the results are available
+        USE_BATCHED_INFERENCE=True,
+        INFERENCE_MIN_BATCH_SIZE=32,
+        **GLOBAL_CONFIG,
+    ),
+    MODEL_CONFIG=MODEL_CONFIG,
+    BASE_PATH=TRAINING_CONFIG["BASE_PATH"],
+)
+
+
+DEEPNN_MCTS_BASE_CONFIG2 = dict(
+    NAME="deepnn_mcts_bs1",
+    AGENT_TYPE="DEEPNN_AND_MCTS_AGENT",
+    AGENT_CONFIG=dict(
+        # Coefficient for the uncertainty based prior. Increasing this value increases model prior based exploration bonus (a term that has a high value if very few vists have occured from that state, or if the model thinks it is a good action to take.)
+        UCT_C_COEFF=2,
+        # Number of MCTS playouts for each move in the game
+        NUM_PLAYOUTS=1000,
+        # Inference is usually performed for each request, but this can be quite slow and not utilize the GPU effectively. Batched inference queues the inference request and registers a "virtual loss" which is reversed when the INFERENCE_MIN_BATCH_SIZE is reached and the results are available
+        USE_BATCHED_INFERENCE=True,
+        INFERENCE_MIN_BATCH_SIZE=1,
+        **GLOBAL_CONFIG,
+    ),
+    MODEL_CONFIG=MODEL_CONFIG,
+    BASE_PATH=TRAINING_CONFIG["BASE_PATH"],
+)
+
+UNIFORM_PRIOR_BASE_CONFIG = dict(
+    NAME="uniform_prior_mcts",
+    AGENT_TYPE="UNIFORM_PRIOR_MCTS_AGENT",
+    AGENT_CONFIG=dict(
+        # Coefficient for the uncertainty based prior. Increasing this value increases model prior based exploration bonus (a term that has a high value if very few vists have occured from that state, or if the model thinks it is a good action to take.)
+        UCT_C_COEFF=2,
+        # Number of MCTS playouts for each move in the game
+        NUM_PLAYOUTS=1000,
         # Inference is usually performed for each request, but this can be quite slow and not utilize the GPU effectively. Batched inference queues the inference request and registers a "virtual loss" which is reversed when the INFERENCE_MIN_BATCH_SIZE is reached and the results are available
         USE_BATCHED_INFERENCE=True,
         INFERENCE_MIN_BATCH_SIZE=4,
@@ -101,18 +142,27 @@ ARENA_CONFIG = dict(
     ),
     MODEL_CONFIG=MODEL_CONFIG,
     BASE_PATH=TRAINING_CONFIG["BASE_PATH"],
+)
+
+
+ARENA_CONFIG = dict(
+    PRINT_GAMES=False,
     NUM_GAMES=50,
     BEGIN_POSITION_DEPTH=3,
-    USE_MULTIPROCESSING=False,
-    # N_MULTIPROCESS_GAME_RUNNERS=N_MULTIPROCESS_GAME_RUNNERS,
+    USE_MULTIPROCESSING=True,
+    N_MULTIPROCESS_GAME_RUNNERS=N_MULTIPROCESS_GAME_RUNNERS,
+    PLAYER1_BASE_CONFIG=DEEPNN_MCTS_BASE_CONFIG,
+    PLAYER1_VARIANTS=dict(ITERATIONS=[5]),
+    PLAYER2_BASE_CONFIG=DEEPNN_MCTS_BASE_CONFIG2,
+    PLAYER2_VARIANTS=dict(ITERATIONS=[1]),
 )
 
 TEST_CONFIG = dict(
-    TEST="BatchedInferenceAccuracy",
+    TEST="Accuracy",
     # Test specifics
-    INFERENCE_BATCH_SIZES_TO_COMPARE=[1, 8, 32],
-    TEST_CASE_SET="RANDOM_TEST_CASES",
-    MODEL_WEIGHTS_SOURCE="ModelCheckpoints/debug_model/iteration_0.pth",
+    # INFERENCE_BATCH_SIZES_TO_COMPARE=[1, 8, 32],
+    TEST_CASE_SET="DEFAULT_TEST_CASES",
+    MODEL_WEIGHTS_SOURCE="ModelCheckpoints/debug_model/iteration_25.pth",
 )
 
 SAVE_CONFIG = dict(
@@ -129,7 +179,7 @@ MODEL_VERIFICATION_PIPELINE = "ModelVerificationPipeline"
 ARENA_PIPELINE = "ArenaPipeline"
 ONNX_SAVE_PIPELINE = "ONNXSavePipeline"
 
-PIPELINE = SELF_PLAY_AND_TRAINING_PIPELINE
+PIPELINE = MODEL_VERIFICATION_PIPELINE
 # ARENA_PIPELINE
 # SELF_PLAY_AND_TRAINING_PIPELINE
 # MODEL_VERIFICATION_PIPELINE
